@@ -341,7 +341,14 @@ export default function MensagensPage() {
             {messages.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell className="max-w-md truncate text-zinc-600">{m.text}</TableCell>
+                <TableCell className="text-zinc-600 align-top">
+                  <div
+                    className="line-clamp-3 max-w-xl whitespace-pre-wrap text-sm leading-relaxed"
+                    title={m.text ?? ''}
+                  >
+                    {m.text || <span className="text-zinc-400 italic">— sem texto —</span>}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">{m.medias.length}</TableCell>
                 <TableCell>
                   {m.schedules.length > 0 && (

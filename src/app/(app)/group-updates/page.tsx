@@ -143,8 +143,10 @@ export default function GroupUpdatesPage() {
               <TableRow key={g.id}>
                 <TableCell className="font-mono text-xs">{g.groupRemoteId}</TableCell>
                 <TableCell>{g.target}</TableCell>
-                <TableCell className="max-w-xs truncate">
-                  {g.newName ?? g.newDescription ?? '(picture)'}
+                <TableCell>
+                  <div className="line-clamp-2 max-w-md whitespace-pre-wrap text-sm" title={g.newName ?? g.newDescription ?? ''}>
+                    {g.newName ?? g.newDescription ?? <span className="text-zinc-400">(picture)</span>}
+                  </div>
                 </TableCell>
                 <TableCell>{g.type}</TableCell>
                 <TableCell>{new Date(g.startAt).toLocaleString('pt-BR')}</TableCell>

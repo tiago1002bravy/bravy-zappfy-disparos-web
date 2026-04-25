@@ -80,7 +80,11 @@ export default function ScheduleDetailPage({ params }: { params: Promise<{ id: s
                   <TableCell>
                     <Badge className={COLOR[e.status]}>{e.status}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-red-600 max-w-md truncate">{e.errorMessage}</TableCell>
+                  <TableCell className="text-xs text-red-600">
+                    <div className="line-clamp-2 max-w-md whitespace-pre-wrap" title={e.errorMessage ?? ''}>
+                      {e.errorMessage}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
