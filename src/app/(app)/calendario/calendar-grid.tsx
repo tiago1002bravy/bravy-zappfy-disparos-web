@@ -1,29 +1,98 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MessageSquare, Users } from 'lucide-react';
 import type { CalendarEvent } from './page';
+import type { CalendarEventStatus } from './event-colors';
 import { STATUS_BG } from './event-colors';
 
-const HOUR_PX = 56;
+const HOUR_PX = 64;
 const HALF_HOUR_PX = HOUR_PX / 2;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const EVENT_DURATION_MS = 30 * 60 * 1000;
+const MAX_TRACKS = 3;
 
-type Positioned = CalendarEvent & { trackIdx: number; trackCount: number };
+const STATUS_PRIORITY: Record<CalendarEventStatus, number> = {
+  failed: 5,
+  partial: 4,
+  scheduled: 3,
+  skipped: 2,
+  success: 1,
+};
 
-function layoutEvents(events: CalendarEvent[]): Positioned[] {
-  const sorted = [...events].sort(
-    (a, b) => new Date(a.occurrenceAt).getTime() - new Date(b.occurrenceAt).getTime(),
-  );
+type EventGroup = {
+  id: string;
+  occurrenceAt: string;
+  events: CalendarEvent[];
+  status: CalendarEventStatus;
+  kindMix: 'message' | 'group-update' | 'mixed';
+  totalGroups: number;
+};
+
+type Positioned = EventGroup & { trackIdx: number; trackCount: number };
+
+function groupByMinute(events: CalendarEvent[]): EventGroup[] {
+  const map = new Map<string, CalendarEvent[]>();
+  for (const e of events) {
+    const dt = new Date(e.occurrenceAt);
+    const key = `${dt.getHours()}:${dt.getMinutes()}`;
+    let arr = map.get(key);
+    if (!arr) {
+      arr = [];
+      map.set(key, arr);
+    }
+    arr.push(e);
+  }
+  const groups: EventGroup[] = [];
+  for (const [, evs] of map) {
+    const dt = new Date(evs[0].occurrenceAt);
+    let topStatus: CalendarEventStatus = evs[0].status;
+    for (const e of evs) {
+      if (STATUS_PRIORITY[e.status] > STATUS_PRIORITY[topStatus]) topStatus = e.status;
+    }
+    let kindMix: EventGroup['kindMix'] = evs[0].kind;
+    if (evs.some((e) => e.kind !== evs[0].kind)) kindMix = 'mixed';
+    groups.push({
+      id: `grp-${dt.toISOString()}-${evs.map((e) => e.id).join('|').slice(0, 80)}`,
+      occurrenceAt: dt.toISOString(),
+      events: evs,
+      status: topStatus,
+      kindMix,
+      totalGroups: evs.reduce((acc, e) => acc + e.groupCount, 0),
+    });
+  }
+  groups.sort((a, b) => a.occurrenceAt.localeCompare(b.occurrenceAt));
+  return groups;
+}
+
+function mergeGroups(groups: EventGroup[]): EventGroup {
+  const allEvents = groups.flatMap((g) => g.events);
+  const dt = new Date(groups[0].occurrenceAt);
+  let topStatus: CalendarEventStatus = allEvents[0].status;
+  for (const e of allEvents) {
+    if (STATUS_PRIORITY[e.status] > STATUS_PRIORITY[topStatus]) topStatus = e.status;
+  }
+  let kindMix: EventGroup['kindMix'] = allEvents[0].kind;
+  if (allEvents.some((e) => e.kind !== allEvents[0].kind)) kindMix = 'mixed';
+  return {
+    id: `superstack-${dt.toISOString()}`,
+    occurrenceAt: dt.toISOString(),
+    events: allEvents,
+    status: topStatus,
+    kindMix,
+    totalGroups: allEvents.reduce((acc, e) => acc + e.groupCount, 0),
+  };
+}
+
+function layoutGroups(groups: EventGroup[]): Positioned[] {
   const out: Positioned[] = [];
-  let cluster: { event: CalendarEvent; start: number; end: number }[] = [];
+  let cluster: { group: EventGroup; start: number; end: number }[] = [];
   let clusterEnd = 0;
   const flush = () => {
     if (!cluster.length) return;
     const tracks: number[] = [];
-    const placed: { event: CalendarEvent; trackIdx: number }[] = [];
+    const placed: { group: EventGroup; trackIdx: number }[] = [];
     for (const item of cluster) {
       let idx = tracks.findIndex((endMs) => endMs <= item.start);
       if (idx === -1) {
@@ -31,21 +100,27 @@ function layoutEvents(events: CalendarEvent[]): Positioned[] {
         tracks.push(0);
       }
       tracks[idx] = item.end;
-      placed.push({ event: item.event, trackIdx: idx });
+      placed.push({ group: item.group, trackIdx: idx });
     }
+    if (tracks.length > MAX_TRACKS) {
+      const merged = mergeGroups(cluster.map((c) => c.group));
+      out.push({ ...merged, trackIdx: 0, trackCount: 1 });
+      return;
+    }
+    const trackCount = tracks.length;
     for (const p of placed) {
-      out.push({ ...p.event, trackIdx: p.trackIdx, trackCount: tracks.length });
+      out.push({ ...p.group, trackIdx: p.trackIdx, trackCount });
     }
   };
-  for (const e of sorted) {
-    const start = new Date(e.occurrenceAt).getTime();
+  for (const g of groups) {
+    const start = new Date(g.occurrenceAt).getTime();
     const end = start + EVENT_DURATION_MS;
     if (!cluster.length || start >= clusterEnd) {
       flush();
-      cluster = [{ event: e, start, end }];
+      cluster = [{ group: g, start, end }];
       clusterEnd = end;
     } else {
-      cluster.push({ event: e, start, end });
+      cluster.push({ group: g, start, end });
       if (end > clusterEnd) clusterEnd = end;
     }
   }
@@ -58,20 +133,18 @@ export function CalendarGrid({
   cursor,
   events,
   onEventClick,
+  onGroupClick,
 }: {
   view: 'week' | 'day';
   cursor: Date;
   events: CalendarEvent[];
   onEventClick: (e: CalendarEvent) => void;
+  onGroupClick: (events: CalendarEvent[]) => void;
 }) {
   const days =
     view === 'week'
       ? Array.from({ length: 7 }, (_, i) => addDays(startOfDay(cursor), i))
       : [startOfDay(cursor)];
-
-  const eventsByDay = days.map((d) =>
-    events.filter((e) => isSameDay(new Date(e.occurrenceAt), d)),
-  );
 
   const totalHeight = HOUR_PX * 24;
   const cols = view === 'week' ? 7 : 1;
@@ -112,11 +185,7 @@ export function CalendarGrid({
         >
           <div className="border-r relative">
             {HOURS.map((h) => (
-              <div
-                key={h}
-                className="relative"
-                style={{ height: HOUR_PX }}
-              >
+              <div key={h} className="relative" style={{ height: HOUR_PX }}>
                 <div
                   className="absolute right-2 -translate-y-1/2 text-[10px] text-zinc-400 leading-none"
                   style={{ top: 0 }}
@@ -133,12 +202,13 @@ export function CalendarGrid({
             ))}
           </div>
 
-          {days.map((d, dayIdx) => (
+          {days.map((d) => (
             <DayColumn
               key={d.toISOString()}
               day={d}
-              events={eventsByDay[dayIdx]}
+              events={events}
               onEventClick={onEventClick}
+              onGroupClick={onGroupClick}
             />
           ))}
         </div>
@@ -151,22 +221,23 @@ function DayColumn({
   day,
   events,
   onEventClick,
+  onGroupClick,
 }: {
   day: Date;
   events: CalendarEvent[];
   onEventClick: (e: CalendarEvent) => void;
+  onGroupClick: (events: CalendarEvent[]) => void;
 }) {
   const isToday = isSameDay(day, new Date());
-  const nowMinutes = isToday
-    ? new Date().getHours() * 60 + new Date().getMinutes()
-    : -1;
+  const nowMinutes = isToday ? new Date().getHours() * 60 + new Date().getMinutes() : -1;
+
+  const groups = useMemo(() => {
+    const ofDay = events.filter((e) => isSameDay(new Date(e.occurrenceAt), day));
+    return layoutGroups(groupByMinute(ofDay));
+  }, [events, day]);
 
   return (
-    <div
-      className={`relative border-l ${
-        isToday ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
-      }`}
-    >
+    <div className={`relative border-l ${isToday ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''}`}>
       {HOURS.map((h) => (
         <div
           key={h}
@@ -190,20 +261,26 @@ function DayColumn({
         </div>
       )}
 
-      {layoutEvents(events).map((e) => {
-        const dt = new Date(e.occurrenceAt);
+      {groups.map((g) => {
+        const dt = new Date(g.occurrenceAt);
         const minutes = dt.getHours() * 60 + dt.getMinutes();
         const top = minutes * (HOUR_PX / 60);
-        const widthPct = 100 / e.trackCount;
-        const leftPct = e.trackIdx * widthPct;
-        const compact = e.trackCount > 1;
+        const widthPct = 100 / g.trackCount;
+        const leftPct = g.trackIdx * widthPct;
+        const isStack = g.events.length > 1;
+        const compact = g.trackCount > 1;
+        const Icon = g.kindMix === 'group-update' ? Users : MessageSquare;
+        const onClick = () => {
+          if (isStack) onGroupClick(g.events);
+          else onEventClick(g.events[0]);
+        };
         return (
           <button
-            key={e.id}
+            key={g.id}
             type="button"
-            onClick={() => onEventClick(e)}
+            onClick={onClick}
             className={`absolute rounded px-1.5 py-0.5 text-left text-white text-xs shadow-sm border transition-colors overflow-hidden ${
-              STATUS_BG[e.status]
+              STATUS_BG[g.status]
             }`}
             style={{
               top,
@@ -211,20 +288,30 @@ function DayColumn({
               left: `calc(${leftPct}% + 2px)`,
               width: `calc(${widthPct}% - 4px)`,
             }}
-            title={`${format(dt, 'HH:mm')} ${e.title} (${e.groupCount} grupos)`}
+            title={
+              isStack
+                ? `${format(dt, 'HH:mm')} — ${g.events.length} disparos (${g.totalGroups} grupos)`
+                : `${format(dt, 'HH:mm')} ${g.events[0].title} (${g.totalGroups} grupos)`
+            }
           >
             <div className="flex items-center gap-1 leading-tight">
-              {e.kind === 'group-update' ? (
-                <Users className="size-3 shrink-0" />
-              ) : (
-                <MessageSquare className="size-3 shrink-0" />
-              )}
+              <Icon className="size-3 shrink-0" />
               <span className="font-medium tabular-nums">{format(dt, 'HH:mm')}</span>
-              {!compact && <span className="truncate">{e.title}</span>}
+              {isStack && (
+                <span className="bg-white/25 rounded px-1 text-[10px] font-semibold tabular-nums">
+                  ×{g.events.length}
+                </span>
+              )}
+              {!compact && !isStack && <span className="truncate">{g.events[0].title}</span>}
             </div>
-            {!compact && e.groupCount > 0 && (
+            {!compact && !isStack && g.events[0].groupCount > 0 && (
               <div className="text-[10px] opacity-80 leading-tight">
-                {e.groupCount} grupo{e.groupCount === 1 ? '' : 's'}
+                {g.events[0].groupCount} grupo{g.events[0].groupCount === 1 ? '' : 's'}
+              </div>
+            )}
+            {!compact && isStack && (
+              <div className="text-[10px] opacity-80 leading-tight truncate">
+                {g.totalGroups} grupos no total
               </div>
             )}
           </button>

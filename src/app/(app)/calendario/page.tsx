@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { CalendarGrid } from './calendar-grid';
 import { EventDialog } from './event-dialog';
+import { StackDialog } from './stack-dialog';
 import { STATUS_DOT, STATUS_LABEL, type CalendarEventStatus } from './event-colors';
 
 export interface CalendarEvent {
@@ -35,6 +36,7 @@ export default function CalendarioPage() {
   const [cursor, setCursor] = useState<Date>(() => new Date());
   const [includeGroupUpdates, setIncludeGroupUpdates] = useState(true);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const [stack, setStack] = useState<CalendarEvent[] | null>(null);
 
   const { from, to } = rangeFor(view, cursor);
 
@@ -62,7 +64,7 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="flex flex-col h-full -m-8 p-6 gap-4">
+    <div className="flex flex-col -m-8 p-6 gap-4 overflow-hidden" style={{ height: '100vh' }}>
       <div className="flex items-center justify-between flex-wrap gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-semibold">Calendário</h1>
@@ -132,11 +134,18 @@ export default function CalendarioPage() {
         {isLoading ? (
           <div className="text-sm text-zinc-500">Carregando…</div>
         ) : (
-          <CalendarGrid view={view} cursor={cursor} events={data} onEventClick={setSelected} />
+          <CalendarGrid
+            view={view}
+            cursor={cursor}
+            events={data}
+            onEventClick={setSelected}
+            onGroupClick={setStack}
+          />
         )}
       </div>
 
       <EventDialog event={selected} onOpenChange={(o) => !o && setSelected(null)} />
+      <StackDialog events={stack} onOpenChange={(o) => !o && setStack(null)} />
     </div>
   );
 }
