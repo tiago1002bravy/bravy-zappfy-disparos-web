@@ -186,7 +186,7 @@ export default function MensagensPage() {
         groupRemoteIds: sendGroups,
         groupListIds: sendLists,
         type: scheduleType,
-        startAt: scheduleStartAt || new Date().toISOString(),
+        startAt: scheduleStartAt ? new Date(scheduleStartAt).toISOString() : new Date().toISOString(),
       };
       if (!creds.useAccountDefault) {
         payload.instanceName = creds.instanceName;

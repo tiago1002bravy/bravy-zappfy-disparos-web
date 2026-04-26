@@ -86,7 +86,7 @@ export default function GroupUpdatesPage() {
         groupRemoteId,
         target,
         type,
-        startAt: startAt || new Date().toISOString(),
+        startAt: startAt ? new Date(startAt).toISOString() : new Date().toISOString(),
       };
       if (!creds.useAccountDefault) {
         payload.instanceName = creds.instanceName;
