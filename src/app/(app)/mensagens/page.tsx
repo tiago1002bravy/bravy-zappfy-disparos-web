@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,39 @@ interface Message {
 interface Group { id: string; remoteId: string; name: string; instanceName: string }
 interface GroupList { id: string; name: string; color: string | null; _count: { memberships: number } }
 
+function Countdown({ target }: { target: string }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const ms = new Date(target).getTime() - Date.now();
+  if (ms <= 0) return <span className="text-xs text-zinc-400">disparando…</span>;
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  let label = '';
+  if (d > 0) label = `${d}d ${h}h`;
+  else if (h > 0) label = `${h}h ${String(m).padStart(2, '0')}m`;
+  else label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const urgent = ms < 60_000;
+  return (
+    <span className={`text-xs font-mono tabular-nums ${urgent ? 'text-orange-500' : 'text-zinc-500'}`}>
+      {label}
+    </span>
+  );
+}
+
+function nextOnceSchedule(schedules: ScheduleSummary[]): string | null {
+  const now = Date.now();
+  const future = schedules
+    .filter((s) => s.type === 'ONCE' && s.status === 'ACTIVE' && new Date(s.startAt).getTime() > now)
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+  return future[0]?.startAt ?? null;
+}
+
 export default function MensagensPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -102,6 +135,7 @@ export default function MensagensPage() {
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ['messages'],
     queryFn: async () => (await api.get('/messages')).data,
+    refetchInterval: 5000,
   });
 
   function reset() {
@@ -384,15 +418,22 @@ export default function MensagensPage() {
                       <CalendarClock className="size-4" />
                     </Button>
                     {m.schedules.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => { e.stopPropagation(); startCancelSchedules(m); }}
-                        title="Cancelar agendamentos"
-                        className="text-orange-600"
-                      >
-                        <CalendarX className="size-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => { e.stopPropagation(); startCancelSchedules(m); }}
+                          title="Cancelar agendamentos"
+                          className="text-orange-600"
+                        >
+                          <CalendarX className="size-4" />
+                        </Button>
+                        {nextOnceSchedule(m.schedules) && (
+                          <div className="flex items-center px-1">
+                            <Countdown target={nextOnceSchedule(m.schedules)!} />
+                          </div>
+                        )}
+                      </>
                     )}
                     <Button
                       variant="ghost"

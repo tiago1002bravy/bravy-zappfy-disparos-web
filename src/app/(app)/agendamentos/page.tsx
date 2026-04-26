@@ -65,6 +65,7 @@ export default function AgendamentosPage() {
   const { data = [] } = useQuery<Schedule[]>({
     queryKey: ['schedules'],
     queryFn: async () => (await api.get('/schedules')).data,
+    refetchInterval: 5000,
   });
 
   const action = useMutation({
