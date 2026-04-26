@@ -9,11 +9,7 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('zd_access_token');
     if (token) {
       config.headers = config.headers ?? {};
-      if (token.startsWith('zd_')) {
-        config.headers['X-Api-Key'] = token;
-      } else {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      config.headers.Authorization = `Bearer ${token}`;
     }
   }
   return config;
