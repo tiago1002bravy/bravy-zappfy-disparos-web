@@ -9,6 +9,49 @@ import { STATUS_BG } from './event-colors';
 const HOUR_PX = 56;
 const HALF_HOUR_PX = HOUR_PX / 2;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const EVENT_DURATION_MS = 30 * 60 * 1000;
+
+type Positioned = CalendarEvent & { trackIdx: number; trackCount: number };
+
+function layoutEvents(events: CalendarEvent[]): Positioned[] {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.occurrenceAt).getTime() - new Date(b.occurrenceAt).getTime(),
+  );
+  const out: Positioned[] = [];
+  let cluster: { event: CalendarEvent; start: number; end: number }[] = [];
+  let clusterEnd = 0;
+  const flush = () => {
+    if (!cluster.length) return;
+    const tracks: number[] = [];
+    const placed: { event: CalendarEvent; trackIdx: number }[] = [];
+    for (const item of cluster) {
+      let idx = tracks.findIndex((endMs) => endMs <= item.start);
+      if (idx === -1) {
+        idx = tracks.length;
+        tracks.push(0);
+      }
+      tracks[idx] = item.end;
+      placed.push({ event: item.event, trackIdx: idx });
+    }
+    for (const p of placed) {
+      out.push({ ...p.event, trackIdx: p.trackIdx, trackCount: tracks.length });
+    }
+  };
+  for (const e of sorted) {
+    const start = new Date(e.occurrenceAt).getTime();
+    const end = start + EVENT_DURATION_MS;
+    if (!cluster.length || start >= clusterEnd) {
+      flush();
+      cluster = [{ event: e, start, end }];
+      clusterEnd = end;
+    } else {
+      cluster.push({ event: e, start, end });
+      if (end > clusterEnd) clusterEnd = end;
+    }
+  }
+  flush();
+  return out;
+}
 
 export function CalendarGrid({
   view,
@@ -147,31 +190,40 @@ function DayColumn({
         </div>
       )}
 
-      {events.map((e) => {
+      {layoutEvents(events).map((e) => {
         const dt = new Date(e.occurrenceAt);
         const minutes = dt.getHours() * 60 + dt.getMinutes();
         const top = minutes * (HOUR_PX / 60);
+        const widthPct = 100 / e.trackCount;
+        const leftPct = e.trackIdx * widthPct;
+        const compact = e.trackCount > 1;
         return (
           <button
             key={e.id}
             type="button"
             onClick={() => onEventClick(e)}
-            className={`absolute left-1 right-1 rounded px-2 py-1 text-left text-white text-xs shadow-sm border transition-colors ${
+            className={`absolute rounded px-1.5 py-0.5 text-left text-white text-xs shadow-sm border transition-colors overflow-hidden ${
               STATUS_BG[e.status]
             }`}
-            style={{ top, minHeight: 28 }}
+            style={{
+              top,
+              height: HALF_HOUR_PX - 2,
+              left: `calc(${leftPct}% + 2px)`,
+              width: `calc(${widthPct}% - 4px)`,
+            }}
+            title={`${format(dt, 'HH:mm')} ${e.title} (${e.groupCount} grupos)`}
           >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 leading-tight">
               {e.kind === 'group-update' ? (
                 <Users className="size-3 shrink-0" />
               ) : (
                 <MessageSquare className="size-3 shrink-0" />
               )}
               <span className="font-medium tabular-nums">{format(dt, 'HH:mm')}</span>
-              <span className="truncate">{e.title}</span>
+              {!compact && <span className="truncate">{e.title}</span>}
             </div>
-            {e.groupCount > 0 && (
-              <div className="text-[10px] opacity-80">
+            {!compact && e.groupCount > 0 && (
+              <div className="text-[10px] opacity-80 leading-tight">
                 {e.groupCount} grupo{e.groupCount === 1 ? '' : 's'}
               </div>
             )}
