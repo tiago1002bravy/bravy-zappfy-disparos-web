@@ -86,7 +86,7 @@ export default function NovoAgendamentoPage() {
         } else if (type === 'CUSTOM_CRON') {
           expr = cron;
         } else {
-          setPreview(startAt ? [startAt] : []);
+          setPreview(startAt ? [new Date(startAt).toISOString()] : []);
           return;
         }
         const { data } = await api.get('/cron/preview', { params: { expr } });
@@ -105,7 +105,7 @@ export default function NovoAgendamentoPage() {
         groupRemoteIds: selectedGroups,
         groupListIds: selectedLists,
         type,
-        startAt: startAt || new Date().toISOString(),
+        startAt: startAt ? new Date(startAt).toISOString() : new Date().toISOString(),
       };
       if (!creds.useAccountDefault) {
         payload.instanceName = creds.instanceName;
