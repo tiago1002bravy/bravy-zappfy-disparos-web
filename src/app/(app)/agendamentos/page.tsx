@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,31 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Plus, Pause, Play, X, Trash2 } from 'lucide-react';
+
+function Countdown({ target }: { target: string }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const ms = new Date(target).getTime() - Date.now();
+  if (ms <= 0) return <span className="text-xs text-zinc-400">disparando…</span>;
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  let label = '';
+  if (d > 0) label = `${d}d ${h}h`;
+  else if (h > 0) label = `${h}h ${String(m).padStart(2, '0')}m`;
+  else label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  const urgent = ms < 60_000;
+  return (
+    <span className={`text-xs font-mono tabular-nums ${urgent ? 'text-orange-500' : 'text-zinc-500'}`}>
+      {label}
+    </span>
+  );
+}
 
 interface Schedule {
   id: string;
@@ -132,6 +158,9 @@ export default function AgendamentosPage() {
                       >
                         <Play className="size-4" />
                       </Button>
+                    )}
+                    {s.status === 'ACTIVE' && s.type === 'ONCE' && (
+                      <Countdown target={s.startAt} />
                     )}
                     {(s.status === 'ACTIVE' || s.status === 'PAUSED') && (
                       <Button
