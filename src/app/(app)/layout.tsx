@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Users, MessageSquare, CalendarClock, ImageIcon, Settings, LogOut, Tags, Link2 } from 'lucide-react';
+import { Users, MessageSquare, CalendarClock, Calendar, ImageIcon, Settings, LogOut, Tags, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAV = [
@@ -12,6 +12,7 @@ const NAV = [
   { href: '/mensagens', label: 'Mensagens', icon: MessageSquare },
   { href: '/midias', label: 'Mídias', icon: ImageIcon },
   { href: '/agendamentos', label: 'Agendamentos', icon: CalendarClock },
+  { href: '/calendario', label: 'Calendário', icon: Calendar },
   { href: '/group-updates', label: 'Atualizar grupos', icon: Users },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
