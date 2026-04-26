@@ -62,8 +62,8 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="flex flex-col h-full -m-8 p-6 gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-semibold">Calendário</h1>
           <p className="text-sm text-zinc-500">
@@ -104,7 +104,7 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-4 shrink-0">
         <div className="text-lg font-medium">{rangeLabel(view, cursor)}</div>
         <div className="flex items-center gap-6 flex-wrap">
           <div className="flex items-center gap-2">
@@ -128,11 +128,13 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="text-sm text-zinc-500">Carregando…</div>
-      ) : (
-        <CalendarGrid view={view} cursor={cursor} events={data} onEventClick={setSelected} />
-      )}
+      <div className="flex-1 min-h-0">
+        {isLoading ? (
+          <div className="text-sm text-zinc-500">Carregando…</div>
+        ) : (
+          <CalendarGrid view={view} cursor={cursor} events={data} onEventClick={setSelected} />
+        )}
+      </div>
 
       <EventDialog event={selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>

@@ -1,11 +1,13 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MessageSquare, Users } from 'lucide-react';
 import type { CalendarEvent } from './page';
 import { STATUS_BG } from './event-colors';
 
-const HOUR_PX = 48;
+const HOUR_PX = 56;
+const HALF_HOUR_PX = HOUR_PX / 2;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 export function CalendarGrid({
@@ -31,10 +33,17 @@ export function CalendarGrid({
   const totalHeight = HOUR_PX * 24;
   const cols = view === 'week' ? 7 : 1;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = HOUR_PX * 7;
+  }, []);
+
   return (
-    <div className="rounded-md border bg-white dark:bg-zinc-950 overflow-hidden">
+    <div className="flex flex-col h-full rounded-md border bg-white dark:bg-zinc-950 overflow-hidden">
       <div
-        className="grid border-b bg-zinc-50 dark:bg-zinc-900"
+        className="grid border-b bg-zinc-50 dark:bg-zinc-900 shrink-0"
         style={{ gridTemplateColumns: `60px repeat(${cols}, 1fr)` }}
       >
         <div />
@@ -53,30 +62,43 @@ export function CalendarGrid({
         ))}
       </div>
 
-      <div
-        className="grid relative"
-        style={{ gridTemplateColumns: `60px repeat(${cols}, 1fr)`, height: totalHeight }}
-      >
-        <div className="border-r">
-          {HOURS.map((h) => (
-            <div
-              key={h}
-              className="text-[10px] text-zinc-400 text-right pr-2 -translate-y-1/2"
-              style={{ height: HOUR_PX, lineHeight: `${HOUR_PX}px` }}
-            >
-              {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
-            </div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
+        <div
+          className="grid relative"
+          style={{ gridTemplateColumns: `60px repeat(${cols}, 1fr)`, height: totalHeight }}
+        >
+          <div className="border-r relative">
+            {HOURS.map((h) => (
+              <div
+                key={h}
+                className="relative"
+                style={{ height: HOUR_PX }}
+              >
+                <div
+                  className="absolute right-2 -translate-y-1/2 text-[10px] text-zinc-400 leading-none"
+                  style={{ top: 0 }}
+                >
+                  {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
+                </div>
+                <div
+                  className="absolute right-2 text-[9px] text-zinc-300 dark:text-zinc-600 leading-none"
+                  style={{ top: HALF_HOUR_PX, transform: 'translateY(-50%)' }}
+                >
+                  {String(h).padStart(2, '0')}:30
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {days.map((d, dayIdx) => (
+            <DayColumn
+              key={d.toISOString()}
+              day={d}
+              events={eventsByDay[dayIdx]}
+              onEventClick={onEventClick}
+            />
           ))}
         </div>
-
-        {days.map((d, dayIdx) => (
-          <DayColumn
-            key={d.toISOString()}
-            day={d}
-            events={eventsByDay[dayIdx]}
-            onEventClick={onEventClick}
-          />
-        ))}
       </div>
     </div>
   );
@@ -105,9 +127,14 @@ function DayColumn({
       {HOURS.map((h) => (
         <div
           key={h}
-          className="border-b border-zinc-100 dark:border-zinc-800"
+          className="border-b border-zinc-200 dark:border-zinc-800 relative"
           style={{ height: HOUR_PX }}
-        />
+        >
+          <div
+            className="absolute left-0 right-0 border-t border-dashed border-zinc-100 dark:border-zinc-900"
+            style={{ top: HALF_HOUR_PX }}
+          />
+        </div>
       ))}
 
       {nowMinutes >= 0 && (
