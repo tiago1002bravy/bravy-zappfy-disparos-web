@@ -4,7 +4,7 @@ import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MessageSquare, Users } from 'lucide-react';
 import type { CalendarEvent } from './page';
-import { STATUS_BG } from './event-colors';
+import { STATUS_BAR } from './event-colors';
 
 const HOUR_PX = 56;
 const HALF_HOUR_PX = HOUR_PX / 2;
@@ -86,23 +86,34 @@ export function CalendarGrid({
   return (
     <div className="flex flex-col h-full rounded-md border bg-white dark:bg-zinc-950 overflow-hidden">
       <div
-        className="grid border-b bg-zinc-50 dark:bg-zinc-900 shrink-0"
+        className="grid border-b bg-white dark:bg-zinc-950 shrink-0"
         style={{ gridTemplateColumns: `60px repeat(${cols}, 1fr)` }}
       >
         <div />
-        {days.map((d) => (
-          <div
-            key={d.toISOString()}
-            className={`px-2 py-3 text-center border-l ${
-              isSameDay(d, new Date()) ? 'bg-blue-50 dark:bg-blue-950/30' : ''
-            }`}
-          >
-            <div className="text-xs uppercase text-zinc-500">
-              {format(d, 'EEE', { locale: ptBR })}
+        {days.map((d) => {
+          const today = isSameDay(d, new Date());
+          return (
+            <div
+              key={d.toISOString()}
+              className="px-3 py-2 border-l border-zinc-200 dark:border-zinc-800"
+            >
+              <div
+                className={`text-xs ${
+                  today ? 'text-violet-600 font-semibold' : 'text-zinc-500'
+                }`}
+              >
+                {format(d, 'EEEE', { locale: ptBR })}
+              </div>
+              <div
+                className={`text-sm ${
+                  today ? 'text-violet-600 font-semibold' : 'text-zinc-500'
+                }`}
+              >
+                {format(d, "d 'de' MMM", { locale: ptBR })}
+              </div>
             </div>
-            <div className="text-lg font-semibold">{format(d, 'd')}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
@@ -110,7 +121,7 @@ export function CalendarGrid({
           className="grid relative"
           style={{ gridTemplateColumns: `60px repeat(${cols}, 1fr)`, height: totalHeight }}
         >
-          <div className="border-r relative">
+          <div className="relative">
             {HOURS.map((h) => (
               <div
                 key={h}
@@ -118,16 +129,10 @@ export function CalendarGrid({
                 style={{ height: HOUR_PX }}
               >
                 <div
-                  className="absolute right-2 -translate-y-1/2 text-[10px] text-zinc-400 leading-none"
+                  className="absolute right-2 -translate-y-1/2 text-[11px] text-zinc-500 leading-none tabular-nums"
                   style={{ top: 0 }}
                 >
                   {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
-                </div>
-                <div
-                  className="absolute right-2 text-[9px] text-zinc-300 dark:text-zinc-600 leading-none"
-                  style={{ top: HALF_HOUR_PX, transform: 'translateY(-50%)' }}
-                >
-                  {String(h).padStart(2, '0')}:30
                 </div>
               </div>
             ))}
@@ -162,22 +167,13 @@ function DayColumn({
     : -1;
 
   return (
-    <div
-      className={`relative border-l ${
-        isToday ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
-      }`}
-    >
+    <div className="relative border-l border-zinc-200 dark:border-zinc-800">
       {HOURS.map((h) => (
         <div
           key={h}
-          className="border-b border-zinc-200 dark:border-zinc-800 relative"
+          className="border-b border-zinc-100 dark:border-zinc-900"
           style={{ height: HOUR_PX }}
-        >
-          <div
-            className="absolute left-0 right-0 border-t border-dashed border-zinc-100 dark:border-zinc-900"
-            style={{ top: HALF_HOUR_PX }}
-          />
-        </div>
+        />
       ))}
 
       {nowMinutes >= 0 && (
@@ -196,15 +192,13 @@ function DayColumn({
         const top = minutes * (HOUR_PX / 60);
         const widthPct = 100 / e.trackCount;
         const leftPct = e.trackIdx * widthPct;
-        const compact = e.trackCount > 1;
+        const compact = e.trackCount > 2;
         return (
           <button
             key={e.id}
             type="button"
             onClick={() => onEventClick(e)}
-            className={`absolute rounded px-1.5 py-0.5 text-left text-white text-xs shadow-sm border transition-colors overflow-hidden ${
-              STATUS_BG[e.status]
-            }`}
+            className="absolute group flex items-center gap-1.5 overflow-hidden rounded-md bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 text-left text-xs text-zinc-800 dark:text-zinc-100 transition-colors pr-2"
             style={{
               top,
               height: HALF_HOUR_PX - 2,
@@ -213,19 +207,19 @@ function DayColumn({
             }}
             title={`${format(dt, 'HH:mm')} ${e.title} (${e.groupCount} grupos)`}
           >
-            <div className="flex items-center gap-1 leading-tight">
-              {e.kind === 'group-update' ? (
-                <Users className="size-3 shrink-0" />
-              ) : (
-                <MessageSquare className="size-3 shrink-0" />
-              )}
-              <span className="font-medium tabular-nums">{format(dt, 'HH:mm')}</span>
-              {!compact && <span className="truncate">{e.title}</span>}
-            </div>
-            {!compact && e.groupCount > 0 && (
-              <div className="text-[10px] opacity-80 leading-tight">
-                {e.groupCount} grupo{e.groupCount === 1 ? '' : 's'}
-              </div>
+            <div className={`h-full w-1 shrink-0 ${STATUS_BAR[e.status]}`} />
+            {e.kind === 'group-update' ? (
+              <Users className="size-3 shrink-0 text-zinc-500" />
+            ) : (
+              <MessageSquare className="size-3 shrink-0 text-zinc-500" />
+            )}
+            <span className="truncate font-medium leading-tight flex-1 min-w-0">
+              {e.title}
+            </span>
+            {!compact && (
+              <span className="text-[10px] tabular-nums text-zinc-500 leading-tight shrink-0">
+                {format(dt, 'HH:mm')}
+              </span>
             )}
           </button>
         );

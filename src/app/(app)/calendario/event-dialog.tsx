@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, MessageSquare, Users } from 'lucide-react';
 import type { CalendarEvent } from './page';
-import { STATUS_BG, STATUS_LABEL } from './event-colors';
+import { STATUS_DOT, STATUS_LABEL } from './event-colors';
 
 export function EventDialog({
   event,
@@ -42,7 +42,8 @@ export function EventDialog({
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
-                <Badge className={`${STATUS_BG[event.status]} text-white border-0`}>
+                <Badge variant="outline" className="gap-1.5 font-normal">
+                  <span className={`size-2 rounded-full ${STATUS_DOT[event.status]}`} />
                   {STATUS_LABEL[event.status]}
                 </Badge>
                 <Badge variant="outline">{event.scheduleType}</Badge>
