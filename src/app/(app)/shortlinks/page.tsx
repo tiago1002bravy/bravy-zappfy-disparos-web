@@ -1,18 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -23,7 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Trash2, Pencil, Copy, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Copy, RefreshCw, Check, ChevronsUpDown, Search } from 'lucide-react';
 
 interface Group { id: string; name: string }
 interface Shortlink {
@@ -39,6 +32,105 @@ interface Shortlink {
 }
 
 const PUBLIC_BASE = process.env.NEXT_PUBLIC_PUBLIC_URL ?? 'http://localhost:3011';
+
+function GroupCombobox({
+  groups,
+  value,
+  onChange,
+  placeholder = 'Escolha o grupo',
+}: {
+  groups: Group[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const selected = groups.find((g) => g.id === value) ?? null;
+
+  const filtered = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return groups;
+    return groups.filter((g) => g.name.toLowerCase().includes(t));
+  }, [groups, q]);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 0);
+    else setQ('');
+  }, [open]);
+
+  return (
+    <div className="relative w-full" ref={wrapRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-left hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+      >
+        <span className={selected ? 'truncate' : 'truncate text-zinc-400'}>
+          {selected ? selected.name : placeholder}
+        </span>
+        <ChevronsUpDown className="size-4 shrink-0 text-zinc-500 ml-2" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg">
+          <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2">
+            <Search className="size-4 text-zinc-400 shrink-0" />
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar grupo..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
+            />
+          </div>
+          <ul className="max-h-72 overflow-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-6 text-center text-xs text-zinc-500">
+                Nenhum grupo encontrado.
+              </li>
+            )}
+            {filtered.map((g) => {
+              const active = g.id === value;
+              return (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(g.id);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50 ${
+                      active ? 'bg-zinc-50' : ''
+                    }`}
+                  >
+                    <Check
+                      className={`size-4 shrink-0 mt-0.5 ${
+                        active ? 'opacity-100 text-zinc-900' : 'opacity-0'
+                      }`}
+                    />
+                    <span className="break-words leading-snug">{g.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ShortlinksPage() {
   const qc = useQueryClient();
@@ -200,18 +292,7 @@ export default function ShortlinksPage() {
             {!editing && (
               <div className="space-y-2">
                 <Label>Grupo</Label>
-                <Select value={groupId} onValueChange={(v) => setGroupId(v ?? '')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha o grupo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <GroupCombobox groups={groups} value={groupId} onChange={setGroupId} />
               </div>
             )}
             <div className="space-y-2">
