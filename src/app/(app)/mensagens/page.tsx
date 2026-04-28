@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, resolveMediaUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -342,10 +342,10 @@ export default function MensagensPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Mensagens</h1>
-          <p className="text-sm text-zinc-500">Templates reutilizáveis para agendamentos</p>
+      <div className="flex items-start justify-between gap-4 pb-5 border-b">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Mensagens</h1>
+          <p className="text-sm text-muted-foreground">Templates reutilizáveis para agendamentos</p>
         </div>
         <Button onClick={startNew}>
           <Plus className="size-4 mr-2" />
@@ -353,91 +353,104 @@ export default function MensagensPage() {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Preview</TableHead>
-              <TableHead className="text-right">Mídias</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right w-48">Ações</TableHead>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="w-64 py-3">Nome</TableHead>
+              <TableHead className="py-3">Preview</TableHead>
+              <TableHead className="w-20 text-center py-3">Mídias</TableHead>
+              <TableHead className="w-28 py-3">Status</TableHead>
+              <TableHead className="w-56 text-right py-3 pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {messages.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-zinc-500">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
                   Nenhuma mensagem ainda.
                 </TableCell>
               </TableRow>
             )}
             {messages.map((m) => (
-              <TableRow key={m.id}>
-                <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell className="text-zinc-600 align-top">
+              <TableRow key={m.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-medium align-top py-4">
+                  <div className="truncate max-w-[15rem]" title={m.name}>{m.name}</div>
+                </TableCell>
+                <TableCell className="text-muted-foreground align-top py-4 whitespace-normal">
                   <div
-                    className="line-clamp-3 max-w-xl whitespace-pre-wrap text-sm leading-relaxed"
+                    className="line-clamp-2 max-w-xl whitespace-pre-wrap text-sm leading-relaxed break-words"
                     title={m.text ?? ''}
                   >
-                    {m.text || <span className="text-zinc-400 italic">— sem texto —</span>}
+                    {m.text || <span className="text-muted-foreground/60 italic">— sem texto —</span>}
                   </div>
                 </TableCell>
-                <TableCell className="text-right">{m.medias.length}</TableCell>
-                <TableCell>
-                  {m.schedules.length > 0 && (
+                <TableCell className="text-center align-top py-4 tabular-nums">{m.medias.length}</TableCell>
+                <TableCell className="align-top py-4">
+                  {m.schedules.length > 0 ? (
                     <Badge variant="secondary" className="text-xs">
                       {m.schedules.length} ag.
                     </Badge>
+                  ) : (
+                    <span className="text-muted-foreground/40 text-sm">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); startEdit(m); }}
-                      title="Editar mensagem"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); startSend(m); }}
-                      title="Disparar agora"
-                    >
-                      <Send className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); startSchedule(m); }}
-                      title="Agendar disparo"
-                    >
-                      <CalendarClock className="size-4" />
-                    </Button>
-                    {m.schedules.length > 0 && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => { e.stopPropagation(); startCancelSchedules(m); }}
-                          title="Cancelar agendamentos"
-                          className="text-orange-600"
-                        >
-                          <CalendarX className="size-4" />
-                        </Button>
-                        {nextOnceSchedule(m.schedules) && (
-                          <div className="flex items-center px-1">
-                            <Countdown target={nextOnceSchedule(m.schedules)!} />
-                          </div>
-                        )}
-                      </>
+                <TableCell className="text-right align-top py-3 pr-3">
+                  <div className="flex items-center justify-end gap-2">
+                    {m.schedules.length > 0 && nextOnceSchedule(m.schedules) && (
+                      <div className="hidden xl:flex items-center pr-1">
+                        <Countdown target={nextOnceSchedule(m.schedules)!} />
+                      </div>
                     )}
+                    <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-r-none"
+                        onClick={(e) => { e.stopPropagation(); startEdit(m); }}
+                        title="Editar mensagem"
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-none"
+                        onClick={(e) => { e.stopPropagation(); startSend(m); }}
+                        title="Disparar agora"
+                      >
+                        <Send className="size-4" />
+                      </Button>
+                      <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-none"
+                        onClick={(e) => { e.stopPropagation(); startSchedule(m); }}
+                        title="Agendar disparo"
+                      >
+                        <CalendarClock className="size-4" />
+                      </Button>
+                      {m.schedules.length > 0 && (
+                        <>
+                          <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-l-none text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                            onClick={(e) => { e.stopPropagation(); startCancelSchedules(m); }}
+                            title="Cancelar agendamentos"
+                          >
+                            <CalendarX className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (confirm('Remover mensagem?')) remove.mutate(m.id);
@@ -664,43 +677,71 @@ export default function MensagensPage() {
       </Dialog>
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Editar mensagem' : 'Nova mensagem'}</DialogTitle>
+        <DialogContent className="max-w-2xl p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="text-lg">{editing ? 'Editar mensagem' : 'Nova mensagem'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome interno</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex: Lembrete reunião" />
-            </div>
-            <div className="space-y-2">
-              <Label>Texto</Label>
-              <Textarea
-                rows={6}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Digite o texto da mensagem (suporta *negrito*, _itálico_, ~tachado~)"
-              />
-            </div>
-            <div className="flex items-start gap-3 rounded-md border p-3 bg-zinc-50 dark:bg-zinc-900">
-              <Checkbox
-                id="mentionAll"
-                checked={mentionAll}
-                onCheckedChange={(v) => setMentionAll(v === true)}
-                className="mt-0.5"
-              />
-              <div className="flex-1">
-                <Label htmlFor="mentionAll" className="cursor-pointer font-medium">
-                  Mencionar todos do grupo (@todos)
-                </Label>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Notifica todo mundo do grupo, mesmo quem está com chat silenciado. Recomendado pra
-                  avisos importantes.
-                </p>
+          <div className="px-6 py-5 space-y-6 max-h-[70vh] overflow-y-auto">
+            {/* Identificação */}
+            <section className="space-y-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Identificação</h3>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Anexos</Label>
+              <div className="space-y-2">
+                <Label>Nome interno</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex: Lembrete reunião" />
+                <p className="text-xs text-muted-foreground">Só pra sua organização — não aparece no WhatsApp.</p>
+              </div>
+            </section>
+
+            <div className="border-t" />
+
+            {/* Conteúdo */}
+            <section className="space-y-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Conteúdo</h3>
+              </div>
+              <div className="space-y-2">
+                <Label>Texto da mensagem</Label>
+                <Textarea
+                  rows={6}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Digite o texto da mensagem (suporta *negrito*, _itálico_, ~tachado~)"
+                  className="resize-y"
+                />
+              </div>
+              <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/40">
+                <Checkbox
+                  id="mentionAll"
+                  checked={mentionAll}
+                  onCheckedChange={(v) => setMentionAll(v === true)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="mentionAll" className="cursor-pointer font-medium">
+                    Mencionar todos do grupo (@todos)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Notifica todo mundo do grupo, mesmo quem está com chat silenciado. Recomendado pra
+                    avisos importantes.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <div className="border-t" />
+
+            {/* Anexos */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Anexos</h3>
+                {attachments.length > 0 && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {attachments.length} {attachments.length === 1 ? 'arquivo' : 'arquivos'}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => pickAndUpload('IMAGE')} disabled={uploading !== null}>
                   <ImageIcon className="size-4 mr-1.5" />
@@ -733,51 +774,91 @@ export default function MensagensPage() {
                 }}
               />
               {attachments.length > 0 && (
-                <div className="space-y-2 mt-2">
+                <div className="rounded-md border bg-card overflow-hidden divide-y">
                   {attachments.map((a, idx) => (
                     <div
                       key={`${a.mediaId}-${idx}`}
-                      className="flex items-center gap-2 p-2 rounded border bg-zinc-50 dark:bg-zinc-900"
+                      className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors"
                     >
-                      <span className="text-xs font-mono text-zinc-500">#{idx + 1}</span>
+                      <span className="text-xs font-mono font-semibold text-muted-foreground w-6 text-center shrink-0">
+                        #{idx + 1}
+                      </span>
                       {a.media.mime.startsWith('image/') ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={a.media.thumbUrl ?? a.media.url}
+                          src={resolveMediaUrl(a.media.thumbUrl ?? a.media.url)}
                           alt=""
-                          className="size-10 object-cover rounded"
+                          className="size-12 object-cover rounded border shrink-0"
                         />
                       ) : (
-                        <div className="size-10 rounded flex items-center justify-center bg-zinc-200 dark:bg-zinc-800">
+                        <div className="size-12 rounded border flex items-center justify-center bg-muted shrink-0">
                           {a.kind === 'PTT' || a.kind === 'AUDIO' ? (
-                            <Mic className="size-4" />
+                            <Mic className="size-5 text-muted-foreground" />
                           ) : a.kind === 'VIDEO' ? (
-                            <Video className="size-4" />
+                            <Video className="size-5 text-muted-foreground" />
                           ) : (
-                            <Paperclip className="size-4" />
+                            <Paperclip className="size-5 text-muted-foreground" />
                           )}
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-0.5">
                         <div className="text-sm font-medium truncate">{KIND_LABEL[a.kind]}</div>
-                        <div className="text-xs text-zinc-500 font-mono truncate">{a.media.mime}</div>
+                        <div className="text-xs text-muted-foreground font-mono truncate">{a.media.mime}</div>
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => moveAttachment(idx, -1)} disabled={idx === 0}>
-                        ↑
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => moveAttachment(idx, 1)} disabled={idx === attachments.length - 1}>
-                        ↓
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeAttachment(idx)}>
-                        <X className="size-4" />
-                      </Button>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 rounded-r-none"
+                            onClick={() => moveAttachment(idx, -1)}
+                            disabled={idx === 0}
+                            title="Mover pra cima"
+                          >
+                            ↑
+                          </Button>
+                          <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-600" />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 rounded-l-none"
+                            onClick={() => moveAttachment(idx, 1)}
+                            disabled={idx === attachments.length - 1}
+                            title="Mover pra baixo"
+                          >
+                            ↓
+                          </Button>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => removeAttachment(idx)}
+                          title="Remover anexo"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </section>
+          </div>
+          <div className="px-6 py-4 border-t bg-muted/20 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => { setOpen(false); reset(); }}
+              disabled={save.isPending}
+            >
+              Cancelar
+            </Button>
             <Button onClick={() => save.mutate()} disabled={!name || save.isPending}>
-              {save.isPending ? 'Salvando...' : 'Salvar'}
+              {save.isPending ? 'Salvando...' : (editing ? 'Salvar alterações' : 'Criar mensagem')}
             </Button>
           </div>
         </DialogContent>

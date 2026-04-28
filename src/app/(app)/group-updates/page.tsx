@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, resolveMediaUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -114,10 +114,10 @@ export default function GroupUpdatesPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Atualizar grupos</h1>
-          <p className="text-sm text-zinc-500">Agendar troca de nome, descrição ou foto</p>
+      <div className="flex items-start justify-between gap-4 pb-5 border-b">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Atualizar grupos</h1>
+          <p className="text-sm text-muted-foreground">Agendar troca de nome, descrição ou foto</p>
         </div>
         <Button onClick={() => setOpen(true)}>
           <Plus className="size-4 mr-2" />
@@ -125,36 +125,53 @@ export default function GroupUpdatesPage() {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Grupo</TableHead>
-              <TableHead>Alvo</TableHead>
-              <TableHead>Novo valor</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Início</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-20" />
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="py-3">Grupo</TableHead>
+              <TableHead className="py-3">Alvo</TableHead>
+              <TableHead className="py-3">Novo valor</TableHead>
+              <TableHead className="py-3">Tipo</TableHead>
+              <TableHead className="py-3">Início</TableHead>
+              <TableHead className="py-3">Status</TableHead>
+              <TableHead className="w-20 text-right py-3 pr-4" />
             </TableRow>
           </TableHeader>
           <TableBody>
+            {data.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                  Nenhuma atualização agendada.
+                </TableCell>
+              </TableRow>
+            )}
             {data.map((g) => (
-              <TableRow key={g.id}>
-                <TableCell className="font-mono text-xs">{g.groupRemoteId}</TableCell>
-                <TableCell>{g.target}</TableCell>
-                <TableCell>
+              <TableRow key={g.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-mono text-xs align-top py-4 text-muted-foreground">{g.groupRemoteId}</TableCell>
+                <TableCell className="align-top py-4">
+                  <Badge variant="outline" className="text-[10px] tracking-wide">{g.target}</Badge>
+                </TableCell>
+                <TableCell className="align-top py-4">
                   <div className="line-clamp-2 max-w-md whitespace-pre-wrap text-sm" title={g.newName ?? g.newDescription ?? ''}>
-                    {g.newName ?? g.newDescription ?? <span className="text-zinc-400">(picture)</span>}
+                    {g.newName ?? g.newDescription ?? <span className="text-muted-foreground/60 italic">(foto)</span>}
                   </div>
                 </TableCell>
-                <TableCell>{g.type}</TableCell>
-                <TableCell>{new Date(g.startAt).toLocaleString('pt-BR')}</TableCell>
-                <TableCell>
-                  <Badge>{g.status}</Badge>
+                <TableCell className="align-top py-4">
+                  <Badge variant="outline" className="text-[10px] tracking-wide">{g.type}</Badge>
                 </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => remove.mutate(g.id)}>
+                <TableCell className="align-top py-4 tabular-nums text-sm">{new Date(g.startAt).toLocaleString('pt-BR')}</TableCell>
+                <TableCell className="align-top py-4">
+                  <Badge variant="secondary">{g.status}</Badge>
+                </TableCell>
+                <TableCell className="text-right align-top py-3 pr-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => remove.mutate(g.id)}
+                    title="Excluir"
+                  >
                     <Trash2 className="size-4" />
                   </Button>
                 </TableCell>
@@ -226,7 +243,7 @@ export default function GroupUpdatesPage() {
                       className={`rounded border-2 ${newPictureMediaId === m.id ? 'border-blue-500' : 'border-transparent'}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={m.thumbUrl ?? m.url} alt="" className="w-full h-16 object-cover rounded" />
+                      <img src={resolveMediaUrl(m.thumbUrl ?? m.url)} alt="" className="w-full h-16 object-cover rounded" />
                     </button>
                   ))}
                 </div>

@@ -102,10 +102,10 @@ export default function GruposPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Grupos</h1>
-          <p className="text-sm text-zinc-500">Cache local dos grupos do WhatsApp</p>
+      <div className="flex items-start justify-between gap-4 pb-5 border-b">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Grupos</h1>
+          <p className="text-sm text-muted-foreground">Cache local dos grupos do WhatsApp</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setOpenCreate(true)}>
@@ -119,44 +119,51 @@ export default function GruposPage() {
         </div>
       </div>
 
-      <Input
-        placeholder="Buscar por nome..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Buscar por nome..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {filtered.length} de {groups.length}
+        </span>
+      </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Instância</TableHead>
-              <TableHead className="text-right">Participantes</TableHead>
-              <TableHead>Última sync</TableHead>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="py-3">Nome</TableHead>
+              <TableHead className="py-3">Instância</TableHead>
+              <TableHead className="text-right py-3">Participantes</TableHead>
+              <TableHead className="py-3">Última sync</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-zinc-500">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                   Carregando...
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-zinc-500">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                   Nenhum grupo. Clique em Sincronizar.
                 </TableCell>
               </TableRow>
             )}
             {filtered.map((g) => (
-              <TableRow key={g.id}>
-                <TableCell className="font-medium">{g.name}</TableCell>
-                <TableCell>{g.instanceName}</TableCell>
-                <TableCell className="text-right">{g.participantsCount ?? '-'}</TableCell>
-                <TableCell>{new Date(g.syncedAt).toLocaleString('pt-BR')}</TableCell>
+              <TableRow key={g.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-medium py-4">{g.name}</TableCell>
+                <TableCell className="py-4 text-muted-foreground text-xs font-mono truncate max-w-[14rem]" title={g.instanceName}>
+                  {g.instanceName}
+                </TableCell>
+                <TableCell className="text-right py-4 tabular-nums">{g.participantsCount ?? '—'}</TableCell>
+                <TableCell className="py-4 tabular-nums text-sm">{new Date(g.syncedAt).toLocaleString('pt-BR')}</TableCell>
               </TableRow>
             ))}
           </TableBody>

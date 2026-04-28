@@ -101,10 +101,10 @@ export default function GroupListsPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Listas de grupos</h1>
-          <p className="text-sm text-zinc-500">Agrupe grupos pra disparar pra todos de uma vez</p>
+      <div className="flex items-start justify-between gap-4 pb-5 border-b">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Listas de grupos</h1>
+          <p className="text-sm text-muted-foreground">Agrupe grupos pra disparar pra todos de uma vez</p>
         </div>
         <Button onClick={startNew}>
           <Plus className="size-4 mr-2" />
@@ -112,48 +112,58 @@ export default function GroupListsPage() {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead className="text-right">Grupos</TableHead>
-              <TableHead className="w-32 text-right">Ações</TableHead>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="py-3">Nome</TableHead>
+              <TableHead className="text-right py-3">Grupos</TableHead>
+              <TableHead className="w-32 text-right py-3 pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {lists.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-zinc-500">
+                <TableCell colSpan={3} className="text-center text-muted-foreground py-10">
                   Nenhuma lista. Clique em &quot;Nova lista&quot; pra começar.
                 </TableCell>
               </TableRow>
             )}
             {lists.map((l) => (
-              <TableRow key={l.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
+              <TableRow key={l.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="py-4">
+                  <div className="flex items-center gap-2.5">
                     <span
-                      className="size-3 rounded-full"
+                      className="size-3 rounded-full ring-1 ring-border shrink-0"
                       style={{ background: l.color ?? '#ccc' }}
                     />
                     <span className="font-medium">{l.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right py-4">
                   <Badge variant="secondary">{l._count.memberships}</Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => startEdit(l)}>
-                      <Pencil className="size-4" />
-                    </Button>
+                <TableCell className="text-right py-3 pr-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => startEdit(l)}
+                        title="Editar"
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() => {
                         if (confirm('Remover lista?')) remove.mutate(l.id);
                       }}
+                      title="Excluir"
                     >
                       <Trash2 className="size-4" />
                     </Button>

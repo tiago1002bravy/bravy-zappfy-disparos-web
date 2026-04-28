@@ -5,16 +5,36 @@ import { useEffect, useState } from 'react';
 import { Users, MessageSquare, CalendarClock, Calendar, ImageIcon, Settings, LogOut, Tags, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const NAV = [
-  { href: '/grupos', label: 'Grupos', icon: Users },
-  { href: '/group-lists', label: 'Listas de grupos', icon: Tags },
-  { href: '/shortlinks', label: 'Shortlinks', icon: Link2 },
-  { href: '/mensagens', label: 'Mensagens', icon: MessageSquare },
-  { href: '/midias', label: 'Mídias', icon: ImageIcon },
-  { href: '/agendamentos', label: 'Agendamentos', icon: CalendarClock },
-  { href: '/calendario', label: 'Calendário', icon: Calendar },
-  { href: '/group-updates', label: 'Atualizar grupos', icon: Users },
-  { href: '/settings', label: 'Settings', icon: Settings },
+const NAV_SECTIONS = [
+  {
+    label: 'Cadastros',
+    items: [
+      { href: '/grupos', label: 'Grupos', icon: Users },
+      { href: '/group-lists', label: 'Listas de grupos', icon: Tags },
+      { href: '/shortlinks', label: 'Shortlinks', icon: Link2 },
+      { href: '/mensagens', label: 'Mensagens', icon: MessageSquare },
+      { href: '/midias', label: 'Mídias', icon: ImageIcon },
+    ],
+  },
+  {
+    label: 'Disparos',
+    items: [
+      { href: '/agendamentos', label: 'Agendamentos', icon: CalendarClock },
+      { href: '/calendario', label: 'Calendário', icon: Calendar },
+    ],
+  },
+  {
+    label: 'Manutenção',
+    items: [
+      { href: '/group-updates', label: 'Atualizar grupos', icon: Users },
+    ],
+  },
+  {
+    label: 'Sistema',
+    items: [
+      { href: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -41,36 +61,58 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-1">
-      <aside className="w-64 border-r bg-zinc-50 dark:bg-zinc-900 p-4 flex flex-col gap-2">
-        <div className="px-2 py-3 text-lg font-semibold">Zappfy Disparos</div>
-        <nav className="flex flex-col gap-1">
-          {NAV.map((n) => {
-            const Icon = n.icon;
-            const active = path?.startsWith(n.href);
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors',
-                  active
-                    ? 'bg-zinc-200 dark:bg-zinc-800 font-medium'
-                    : 'hover:bg-zinc-100 dark:hover:bg-zinc-800',
-                )}
-              >
-                <Icon className="size-4" />
-                {n.label}
-              </Link>
-            );
-          })}
+      <aside className="w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
+        <div className="px-5 py-5 border-b border-sidebar-border">
+          <div className="text-base font-semibold tracking-tight">Zappfy Disparos</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Painel de controle</div>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5">
+          {NAV_SECTIONS.map((section, sIdx) => (
+            <div key={section.label} className="flex flex-col gap-1">
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.label}
+              </div>
+              {section.items.map((n) => {
+                const Icon = n.icon;
+                const active = path?.startsWith(n.href);
+                return (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    className={cn(
+                      'group relative flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-md text-sm transition-colors',
+                      active
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full transition-colors',
+                        active ? 'bg-foreground' : 'bg-transparent',
+                      )}
+                    />
+                    <Icon className={cn('size-4 shrink-0', active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
+                    <span className="truncate">{n.label}</span>
+                  </Link>
+                );
+              })}
+              {sIdx < NAV_SECTIONS.length - 1 && (
+                <div className="mx-3 mt-3 border-t border-sidebar-border" />
+              )}
+            </div>
+          ))}
         </nav>
-        <button
-          onClick={logout}
-          className="mt-auto flex items-center gap-2 px-3 py-2 rounded text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          <LogOut className="size-4" />
-          Sair
-        </button>
+        <div className="border-t border-sidebar-border p-3">
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+          >
+            <LogOut className="size-4" />
+            Sair
+          </button>
+        </div>
       </aside>
       <main className="flex-1 overflow-auto p-8">{children}</main>
     </div>

@@ -1,19 +1,48 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MessageSquare, Users } from 'lucide-react';
+import { MessageSquare, Users, Layers, ChevronRight } from 'lucide-react';
 import type { CalendarEvent } from './page';
-import { STATUS_BAR } from './event-colors';
+import { STATUS_BAR, STATUS_DOT, STATUS_LABEL } from './event-colors';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const HOUR_PX = 56;
 const HALF_HOUR_PX = HOUR_PX / 2;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const EVENT_DURATION_MS = 30 * 60 * 1000;
+const CLUSTER_THRESHOLD = 3; // 3+ eventos sobrepostos → vira card de resumo
+
+type ClusterGroup = {
+  events: CalendarEvent[];
+  startMs: number;
+  endMs: number;
+};
 
 type Positioned = CalendarEvent & { trackIdx: number; trackCount: number };
 
-function layoutEvents(events: CalendarEvent[]): Positioned[] {
+function groupClusters(events: CalendarEvent[]): ClusterGroup[] {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.occurrenceAt).getTime() - new Date(b.occurrenceAt).getTime(),
+  );
+  const groups: ClusterGroup[] = [];
+  let current: ClusterGroup | null = null;
+  for (const e of sorted) {
+    const start = new Date(e.occurrenceAt).getTime();
+    const end = start + EVENT_DURATION_MS;
+    if (!current || start >= current.endMs) {
+      current = { events: [e], startMs: start, endMs: end };
+      groups.push(current);
+    } else {
+      current.events.push(e);
+      if (end > current.endMs) current.endMs = end;
+    }
+  }
+  return groups;
+}
+
+function layoutSparse(events: CalendarEvent[]): Positioned[] {
+  // mesmo algoritmo de tracks, mas só pra eventos que não viraram cluster denso
   const sorted = [...events].sort(
     (a, b) => new Date(a.occurrenceAt).getTime() - new Date(b.occurrenceAt).getTime(),
   );
@@ -53,6 +82,13 @@ function layoutEvents(events: CalendarEvent[]): Positioned[] {
   return out;
 }
 
+function dominantStatus(events: CalendarEvent[]): CalendarEvent['status'] {
+  const counts: Record<string, number> = {};
+  for (const e of events) counts[e.status] = (counts[e.status] ?? 0) + 1;
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return (sorted[0]?.[0] ?? 'scheduled') as CalendarEvent['status'];
+}
+
 export function CalendarGrid({
   view,
   cursor,
@@ -82,6 +118,8 @@ export function CalendarGrid({
     if (!el) return;
     el.scrollTop = HOUR_PX * 7;
   }, []);
+
+  const [clusterModal, setClusterModal] = useState<ClusterGroup | null>(null);
 
   return (
     <div className="flex flex-col h-full rounded-md border bg-white dark:bg-zinc-950 overflow-hidden">
@@ -144,10 +182,20 @@ export function CalendarGrid({
               day={d}
               events={eventsByDay[dayIdx]}
               onEventClick={onEventClick}
+              onClusterClick={setClusterModal}
             />
           ))}
         </div>
       </div>
+
+      <ClusterDialog
+        cluster={clusterModal}
+        onOpenChange={(o) => !o && setClusterModal(null)}
+        onPickEvent={(e) => {
+          setClusterModal(null);
+          onEventClick(e);
+        }}
+      />
     </div>
   );
 }
@@ -156,15 +204,28 @@ function DayColumn({
   day,
   events,
   onEventClick,
+  onClusterClick,
 }: {
   day: Date;
   events: CalendarEvent[];
   onEventClick: (e: CalendarEvent) => void;
+  onClusterClick: (cluster: ClusterGroup) => void;
 }) {
   const isToday = isSameDay(day, new Date());
   const nowMinutes = isToday
     ? new Date().getHours() * 60 + new Date().getMinutes()
     : -1;
+
+  const { sparseEvents, denseClusters } = useMemo(() => {
+    const groups = groupClusters(events);
+    const sparseEvents: CalendarEvent[] = [];
+    const denseClusters: ClusterGroup[] = [];
+    for (const g of groups) {
+      if (g.events.length >= CLUSTER_THRESHOLD) denseClusters.push(g);
+      else sparseEvents.push(...g.events);
+    }
+    return { sparseEvents, denseClusters };
+  }, [events]);
 
   return (
     <div className="relative border-l border-zinc-200 dark:border-zinc-800">
@@ -186,26 +247,27 @@ function DayColumn({
         </div>
       )}
 
-      {layoutEvents(events).map((e) => {
+      {/* Eventos esparsos: render normal com tracks */}
+      {layoutSparse(sparseEvents).map((e) => {
         const dt = new Date(e.occurrenceAt);
         const minutes = dt.getHours() * 60 + dt.getMinutes();
         const top = minutes * (HOUR_PX / 60);
         const widthPct = 100 / e.trackCount;
         const leftPct = e.trackIdx * widthPct;
-        const compact = e.trackCount > 2;
+        const showTime = e.trackCount === 1;
         return (
           <button
             key={e.id}
             type="button"
             onClick={() => onEventClick(e)}
-            className="absolute group flex items-center gap-1.5 overflow-hidden rounded-md bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 text-left text-xs text-zinc-800 dark:text-zinc-100 transition-colors pr-2"
+            className="absolute flex items-center gap-1.5 pr-1.5 overflow-hidden rounded-md bg-zinc-100 hover:bg-zinc-200 hover:z-20 hover:shadow-md hover:ring-2 hover:ring-zinc-300 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600 text-left text-xs text-zinc-800 dark:text-zinc-100 transition-all"
             style={{
               top,
               height: HALF_HOUR_PX - 2,
               left: `calc(${leftPct}% + 2px)`,
               width: `calc(${widthPct}% - 4px)`,
             }}
-            title={`${format(dt, 'HH:mm')} ${e.title} (${e.groupCount} grupos)`}
+            title={`${format(dt, 'HH:mm')} · ${e.title} (${e.groupCount} grupo${e.groupCount === 1 ? '' : 's'})`}
           >
             <div className={`h-full w-1 shrink-0 ${STATUS_BAR[e.status]}`} />
             {e.kind === 'group-update' ? (
@@ -216,7 +278,7 @@ function DayColumn({
             <span className="truncate font-medium leading-tight flex-1 min-w-0">
               {e.title}
             </span>
-            {!compact && (
+            {showTime && (
               <span className="text-[10px] tabular-nums text-zinc-500 leading-tight shrink-0">
                 {format(dt, 'HH:mm')}
               </span>
@@ -224,6 +286,156 @@ function DayColumn({
           </button>
         );
       })}
+
+      {/* Clusters densos: 1 card de resumo */}
+      {denseClusters.map((c) => {
+        const startDt = new Date(c.startMs);
+        const endDt = new Date(c.endMs);
+        const startMin = startDt.getHours() * 60 + startDt.getMinutes();
+        const endMin = endDt.getHours() * 60 + endDt.getMinutes();
+        const top = startMin * (HOUR_PX / 60);
+        const height = Math.max((endMin - startMin) * (HOUR_PX / 60) - 4, HALF_HOUR_PX - 2);
+        const status = dominantStatus(c.events);
+        const statusCounts = c.events.reduce<Record<string, number>>((acc, e) => {
+          acc[e.status] = (acc[e.status] ?? 0) + 1;
+          return acc;
+        }, {});
+        const compact = height < 56;
+        return (
+          <button
+            key={`cluster-${c.startMs}`}
+            type="button"
+            onClick={() => onClusterClick(c)}
+            className="absolute group flex overflow-hidden rounded-lg border bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:z-20 hover:shadow-lg hover:border-zinc-400 dark:hover:border-zinc-600 text-left text-zinc-800 dark:text-zinc-100 transition-all"
+            style={{
+              top: top + 2,
+              height,
+              left: 4,
+              right: 4,
+            }}
+            title={`${c.events.length} disparos entre ${format(startDt, 'HH:mm')} e ${format(endDt, 'HH:mm')}`}
+          >
+            {/* Barra de status à esquerda */}
+            <div className={`w-1 shrink-0 ${STATUS_BAR[status]}`} />
+
+            {compact ? (
+              // Layout compacto: tudo numa linha só, sem pills (só dot+número)
+              <div className="flex-1 min-w-0 px-3 flex items-center gap-3 text-xs">
+                <span className="font-bold tabular-nums shrink-0">{c.events.length}</span>
+                <span className="text-zinc-500 shrink-0">disparos</span>
+                <div className="flex items-center gap-2 ml-auto shrink-0">
+                  {Object.entries(statusCounts).map(([s, n]) => (
+                    <span
+                      key={s}
+                      className="inline-flex items-center gap-1 text-[11px] tabular-nums"
+                    >
+                      <span className={`size-2 rounded-full ${STATUS_DOT[s as CalendarEvent['status']]}`} />
+                      <span className="font-semibold">{n}</span>
+                    </span>
+                  ))}
+                </div>
+                <ChevronRight className="size-3.5 text-zinc-400 group-hover:text-zinc-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </div>
+            ) : (
+              // Layout expandido: número grande + divider + pills
+              <div className="flex-1 min-w-0 px-3 py-2 flex items-center gap-3">
+                <div className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="text-2xl font-bold tabular-nums leading-none">{c.events.length}</span>
+                  <span className="text-xs text-zinc-500 leading-none">disparos</span>
+                </div>
+                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700 shrink-0" />
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                  {Object.entries(statusCounts).map(([s, n]) => (
+                    <span
+                      key={s}
+                      className="inline-flex items-center gap-1 text-[10px] tabular-nums px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800"
+                    >
+                      <span className={`size-1.5 rounded-full ${STATUS_DOT[s as CalendarEvent['status']]}`} />
+                      <span className="font-semibold">{n}</span>
+                    </span>
+                  ))}
+                </div>
+                <ChevronRight className="size-4 text-zinc-400 group-hover:text-zinc-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </div>
+            )}
+          </button>
+        );
+      })}
     </div>
+  );
+}
+
+function ClusterDialog({
+  cluster,
+  onOpenChange,
+  onPickEvent,
+}: {
+  cluster: ClusterGroup | null;
+  onOpenChange: (o: boolean) => void;
+  onPickEvent: (e: CalendarEvent) => void;
+}) {
+  if (!cluster) {
+    return <Dialog open={false} onOpenChange={onOpenChange}><DialogContent className="hidden" /></Dialog>;
+  }
+  const startDt = new Date(cluster.startMs);
+  const endDt = new Date(cluster.endMs);
+  const sorted = [...cluster.events].sort(
+    (a, b) => new Date(a.occurrenceAt).getTime() - new Date(b.occurrenceAt).getTime(),
+  );
+  const statusCounts = cluster.events.reduce<Record<string, number>>((acc, e) => {
+    acc[e.status] = (acc[e.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle className="text-lg flex items-center gap-2">
+            <Layers className="size-5 text-zinc-500" />
+            {cluster.events.length} disparos
+            <span className="text-sm font-normal text-zinc-500 tabular-nums ml-2">
+              {format(startDt, 'HH:mm')}–{format(endDt, 'HH:mm')}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="px-6 py-3 border-b bg-zinc-50 dark:bg-zinc-900 flex items-center gap-4 flex-wrap">
+          {Object.entries(statusCounts).map(([s, n]) => (
+            <div key={s} className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300 tabular-nums">
+              <span className={`size-2.5 rounded-full ${STATUS_DOT[s as CalendarEvent['status']]}`} />
+              <span className="font-medium">{n}</span>
+              <span className="text-zinc-500">{STATUS_LABEL[s as CalendarEvent['status']]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto divide-y">
+          {sorted.map((e) => {
+            const dt = new Date(e.occurrenceAt);
+            return (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => onPickEvent(e)}
+                className="w-full flex items-center gap-3 px-6 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors"
+              >
+                <div className={`size-2.5 rounded-full shrink-0 ${STATUS_DOT[e.status]}`} />
+                <span className="text-xs font-mono tabular-nums text-zinc-500 w-12 shrink-0">
+                  {format(dt, 'HH:mm')}
+                </span>
+                {e.kind === 'group-update' ? (
+                  <Users className="size-4 text-zinc-500 shrink-0" />
+                ) : (
+                  <MessageSquare className="size-4 text-zinc-500 shrink-0" />
+                )}
+                <span className="text-sm font-medium truncate flex-1">{e.title}</span>
+                <span className="text-xs text-zinc-500 tabular-nums shrink-0">
+                  {e.groupCount} grupo{e.groupCount === 1 ? '' : 's'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
