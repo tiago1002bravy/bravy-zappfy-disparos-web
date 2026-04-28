@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, resolveMediaUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -79,7 +79,7 @@ export default function MidiasPage() {
               {m.mime.startsWith('image/') && (m.thumbUrl || m.url) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={m.thumbUrl ?? m.url}
+                  src={resolveMediaUrl(m.thumbUrl ?? m.url)}
                   alt=""
                   className="w-full h-32 object-cover rounded"
                 />

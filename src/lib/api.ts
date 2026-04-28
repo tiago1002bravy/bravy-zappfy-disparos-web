@@ -4,6 +4,18 @@ const baseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1
 
 export const api = axios.create({ baseURL, withCredentials: false });
 
+/**
+ * Resolve URL de mídia retornada pelo backend.
+ * Backend agora devolve path relativo (ex: "/media/raw/abc?exp=...&sig=...")
+ * que precisa ser combinado com a baseURL da API.
+ * URLs absolutas (legacy) passam direto.
+ */
+export function resolveMediaUrl(u: string | null | undefined): string {
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u)) return u;
+  return `${baseURL}${u.startsWith('/') ? '' : '/'}${u}`;
+}
+
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('zd_access_token');
