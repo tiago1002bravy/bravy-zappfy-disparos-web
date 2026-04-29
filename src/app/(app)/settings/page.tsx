@@ -49,7 +49,7 @@ interface ApiKey {
   revokedAt: string | null;
 }
 
-type Section = 'geral' | 'whatsapp' | 'participantes' | 'api-keys';
+type Section = 'geral' | 'minha-conexao' | 'whatsapp' | 'participantes' | 'api-keys';
 
 const SECTIONS: { id: Section; label: string; icon: typeof Building2; description: string }[] = [
   {
@@ -59,10 +59,16 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
     description: 'Conta, fuso horário e webhook de notificação.',
   },
   {
-    id: 'whatsapp',
-    label: 'WhatsApp',
+    id: 'minha-conexao',
+    label: 'Minha conexão',
     icon: MessageCircle,
-    description: 'Conexão Uazapi padrão usada pelas ações.',
+    description: 'Sua conexão WhatsApp pessoal — disparos saem do seu número.',
+  },
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp padrão',
+    icon: MessageCircle,
+    description: 'Conexão padrão da conta (fallback pra usuários sem conexão própria).',
   },
   {
     id: 'participantes',
@@ -77,6 +83,15 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
     description: 'Chaves para integrações externas (n8n, scripts).',
   },
 ];
+
+interface Me {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  instanceName: string | null;
+  hasInstanceToken: boolean;
+}
 
 export default function SettingsPage() {
   const qc = useQueryClient();
@@ -95,6 +110,44 @@ export default function SettingsPage() {
   const [defaultInstanceName, setDefaultInstanceName] = useState('');
   const [defaultInstanceToken, setDefaultInstanceToken] = useState('');
   const [defaultParticipants, setDefaultParticipants] = useState('');
+
+  const [myInstanceName, setMyInstanceName] = useState('');
+  const [myInstanceToken, setMyInstanceToken] = useState('');
+
+  const { data: me } = useQuery<Me>({
+    queryKey: ['me'],
+    queryFn: async () => (await api.get('/users/me')).data,
+  });
+
+  useEffect(() => {
+    if (me) {
+      setMyInstanceName(me.instanceName ?? '');
+    }
+  }, [me]);
+
+  const updateMyConnection = useMutation({
+    mutationFn: async () => {
+      const payload: Record<string, unknown> = {
+        instanceName: myInstanceName || null,
+      };
+      if (myInstanceToken) payload.instanceToken = myInstanceToken;
+      await api.patch('/users/me/connection', payload);
+    },
+    onSuccess: () => {
+      toast.success('Minha conexão salva');
+      setMyInstanceToken('');
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+
+  const clearMyToken = useMutation({
+    mutationFn: async () =>
+      api.patch('/users/me/connection', { instanceName: null, instanceToken: null }),
+    onSuccess: () => {
+      toast.success('Conexão pessoal removida');
+      qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
 
   useEffect(() => {
     if (tenant) {
@@ -235,10 +288,85 @@ export default function SettingsPage() {
             </SectionPanel>
           )}
 
+          {section === 'minha-conexao' && (
+            <SectionPanel
+              title="Minha conexão WhatsApp"
+              description="Quando configurada, todos os SEUS disparos (e ações que você executa) usam essa conexão. Isso permite que cada usuário da conta use o próprio número. Se vazia, cai no padrão da conta."
+              footer={
+                <Button
+                  onClick={() => updateMyConnection.mutate()}
+                  disabled={updateMyConnection.isPending}
+                >
+                  {updateMyConnection.isPending ? 'Salvando…' : 'Salvar minha conexão'}
+                </Button>
+              }
+            >
+              <FormRow
+                label="Status"
+                helper={
+                  me?.hasInstanceToken
+                    ? 'Sua conexão pessoal está ativa. Disparos saem pelo seu número.'
+                    : 'Sem conexão pessoal. Seus disparos usam o padrão da conta.'
+                }
+              >
+                {me?.hasInstanceToken ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="size-3" />
+                      Conectado
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => clearMyToken.mutate()}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Remover minha conexão
+                    </button>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                    Usando padrão da conta
+                  </span>
+                )}
+              </FormRow>
+
+              <FormRow
+                label="Nome da instância"
+                helper="ID único da sua sessão Uazapi (geralmente um UUID)."
+              >
+                <Input
+                  value={myInstanceName}
+                  onChange={(e) => setMyInstanceName(e.target.value)}
+                  placeholder="ex: 4f9d2a5f-ab56-4e43-8b13-1f932b2e0c22"
+                  className="font-mono text-xs"
+                />
+              </FormRow>
+
+              <FormRow
+                label="Token"
+                helper={
+                  me?.hasInstanceToken
+                    ? 'Deixe em branco pra manter o token atual. Cole um novo pra substituir.'
+                    : 'Cole o token raw da Uazapi do seu número. Será criptografado.'
+                }
+              >
+                <Input
+                  type="password"
+                  value={myInstanceToken}
+                  onChange={(e) => setMyInstanceToken(e.target.value)}
+                  placeholder={
+                    me?.hasInstanceToken ? '•••••••• (manter atual)' : 'cole o token Uazapi'
+                  }
+                  className="font-mono"
+                />
+              </FormRow>
+            </SectionPanel>
+          )}
+
           {section === 'whatsapp' && (
             <SectionPanel
-              title="Conexão WhatsApp padrão"
-              description="Quando configurada, todas as ações (criar grupo, sincronizar, disparar) usam essa conexão automaticamente — sem precisar colar nome+token toda vez."
+              title="Conexão WhatsApp padrão da conta"
+              description="Conexão fallback: usada quando o usuário logado não tem conexão pessoal configurada. Útil pra ter um número 'da empresa' como padrão, que cada usuário pode sobrescrever em 'Minha conexão'."
               footer={
                 <Button onClick={() => updateTenant.mutate()} disabled={updateTenant.isPending}>
                   {updateTenant.isPending ? 'Salvando…' : 'Salvar conexão'}
