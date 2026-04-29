@@ -61,12 +61,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-1">
-      <aside className="w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
+      <aside className="w-56 shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="px-5 py-5 border-b border-sidebar-border">
           <div className="text-base font-semibold tracking-tight">Zappfy Disparos</div>
           <div className="text-xs text-muted-foreground mt-0.5">Painel de controle</div>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5">
+        <nav className="flex-1 overflow-y-auto pl-3 pr-2 py-4 flex flex-col gap-5">
           {NAV_SECTIONS.map((section, sIdx) => (
             <div key={section.label} className="flex flex-col gap-1">
               <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -114,7 +114,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto pl-0 pr-6 py-6">{children}</main>
+      <main className="flex-1 overflow-auto pl-0 pr-8 py-6">{children}</main>
     </div>
   );
 }
