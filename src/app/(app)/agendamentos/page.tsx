@@ -60,7 +60,7 @@ interface Schedule {
   groupRemoteIds: string[];
   message: { id: string; name: string };
   _count: { executions: number };
-  executionStats: ExecutionStats;
+  executionStats?: ExecutionStats;
 }
 
 type DisplayStatus =
@@ -103,11 +103,17 @@ const DISPLAY_STATUS_META: Record<DisplayStatus, { label: string; className: str
   },
 };
 
+const EMPTY_STATS: ExecutionStats = { success: 0, failed: 0, skipped: 0, total: 0 };
+
+function statsOf(s: Schedule): ExecutionStats {
+  return s.executionStats ?? EMPTY_STATS;
+}
+
 function deriveDisplayStatus(s: Schedule, nowMs: number): DisplayStatus {
   if (s.status === 'CANCELED') return 'cancelado';
   if (s.status === 'PAUSED') return 'pausado';
   if (s.status === 'COMPLETED') {
-    return s.executionStats.failed > 0 ? 'falhou' : 'concluido';
+    return statsOf(s).failed > 0 ? 'falhou' : 'concluido';
   }
   if (s.type !== 'ONCE') return 'ativo';
   const startMs = new Date(s.startAt).getTime();
@@ -175,7 +181,7 @@ export default function AgendamentosPage() {
       else if (bucket === 'proximos') proximos.push(s);
       else historicoAll.push(s);
       if (
-        s.executionStats.failed > 0 &&
+        statsOf(s).failed > 0 &&
         new Date(s.startAt).getTime() >= failureWindow
       ) {
         recentFailures += 1;
@@ -340,7 +346,7 @@ function SchedulesTable({
           {rows.map((s) => {
             const display = deriveDisplayStatus(s, nowMs);
             const meta = DISPLAY_STATUS_META[display];
-            const stats = s.executionStats;
+            const stats = statsOf(s);
             return (
               <TableRow key={s.id} className="hover:bg-muted/30 transition-colors">
                 <TableCell className="font-medium align-top py-4">
