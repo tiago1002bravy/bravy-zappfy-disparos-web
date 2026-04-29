@@ -139,16 +139,19 @@ function deriveDisplayStatus(s: Schedule, nowMs: number): DisplayStatus {
   if (s.status === 'CANCELED') return 'cancelado';
   if (s.status === 'PAUSED') return 'pausado';
   const stats = statsOf(s);
+  // Falhou = nada chegou. Parcial (algumas falhas) ainda é Concluído — a coluna Execuções mostra ✓/✗.
+  const nothingArrived = stats.total > 0 && stats.success === 0;
   if (s.status === 'COMPLETED') {
-    return stats.failed > 0 ? 'falhou' : 'concluido';
+    if (stats.total === 0 || nothingArrived) return 'falhou';
+    return 'concluido';
   }
   // ACTIVE
   if (s.type !== 'ONCE') return 'ativo';
   const startMs = new Date(s.startAt).getTime();
   if (startMs < nowMs - 60_000) {
-    // ONCE no passado: se rodou e tudo deu certo, concluído; se rodou e falhou, falhou; se nem rodou, falhou.
     if (stats.total === 0) return 'falhou';
-    return stats.failed > 0 ? 'falhou' : 'concluido';
+    if (nothingArrived) return 'falhou';
+    return 'concluido';
   }
   return 'agendado';
 }
@@ -156,11 +159,14 @@ function deriveDisplayStatus(s: Schedule, nowMs: number): DisplayStatus {
 type Bucket = 'hoje' | 'proximos' | 'historico';
 
 function bucketFor(s: Schedule, now: Date): Bucket {
-  if (s.status === 'COMPLETED' || s.status === 'CANCELED') return 'historico';
-  // Recorrente ativo/pausado é sempre relevante hoje
-  if (s.type !== 'ONCE') return 'hoje';
+  // Recorrente: se cancelado vai pra histórico, senão sempre relevante hoje
+  if (s.type !== 'ONCE') {
+    if (s.status === 'CANCELED') return 'historico';
+    return 'hoje';
+  }
+  // ONCE: bucket pela data do startAt (não pelo status)
+  // Hoje fica em 'hoje' o dia inteiro, qualquer status (concluído, falhou, cancelado, agendado).
   const start = new Date(s.startAt).getTime();
-  // ONCE com data no passado vai pro histórico (mesmo se status ainda for ACTIVE/PAUSED)
   if (start < startOfDay(now).getTime()) return 'historico';
   if (start <= endOfDay(now).getTime()) return 'hoje';
   return 'proximos';
@@ -237,7 +243,7 @@ export default function AgendamentosPage() {
   }, [historicoAll, historyRange]);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 pb-5 border-b">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Agendamentos</h1>
