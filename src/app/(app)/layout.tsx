@@ -114,7 +114,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto pl-2 pr-6 py-6">{children}</main>
+      <main className="flex-1 overflow-auto pl-0 pr-6 py-6">{children}</main>
     </div>
   );
 }
