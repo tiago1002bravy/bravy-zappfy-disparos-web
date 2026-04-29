@@ -34,9 +34,7 @@ interface Tenant {
   slug: string;
   timezone: string;
   failureWebhookUrl: string | null;
-  defaultInstanceName: string | null;
   defaultParticipants: string[];
-  hasDefaultInstanceToken: boolean;
 }
 
 interface ApiKey {
@@ -49,7 +47,7 @@ interface ApiKey {
   revokedAt: string | null;
 }
 
-type Section = 'geral' | 'minha-conexao' | 'whatsapp' | 'participantes' | 'api-keys';
+type Section = 'geral' | 'minha-conexao' | 'participantes' | 'api-keys';
 
 const SECTIONS: { id: Section; label: string; icon: typeof Building2; description: string }[] = [
   {
@@ -62,13 +60,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
     id: 'minha-conexao',
     label: 'Minha conexão',
     icon: MessageCircle,
-    description: 'Sua conexão WhatsApp pessoal — disparos saem do seu número.',
-  },
-  {
-    id: 'whatsapp',
-    label: 'WhatsApp padrão',
-    icon: MessageCircle,
-    description: 'Conexão padrão da conta (fallback pra usuários sem conexão própria).',
+    description: 'Conexão WhatsApp do usuário logado — obrigatória pra disparos.',
   },
   {
     id: 'participantes',
@@ -107,8 +99,6 @@ export default function SettingsPage() {
   const [keyName, setKeyName] = useState('');
   const [newKeyPlain, setNewKeyPlain] = useState<string | null>(null);
 
-  const [defaultInstanceName, setDefaultInstanceName] = useState('');
-  const [defaultInstanceToken, setDefaultInstanceToken] = useState('');
   const [defaultParticipants, setDefaultParticipants] = useState('');
 
   const [myInstanceName, setMyInstanceName] = useState('');
@@ -153,7 +143,6 @@ export default function SettingsPage() {
     if (tenant) {
       setTz(tenant.timezone);
       setWebhook(tenant.failureWebhookUrl ?? '');
-      setDefaultInstanceName(tenant.defaultInstanceName ?? '');
       setDefaultParticipants((tenant.defaultParticipants ?? []).join('\n'));
     }
   }, [tenant]);
@@ -163,26 +152,15 @@ export default function SettingsPage() {
       const payload: Record<string, unknown> = {
         timezone: tz,
         failureWebhookUrl: webhook || null,
-        defaultInstanceName: defaultInstanceName || null,
         defaultParticipants: defaultParticipants
           .split(/[\s,;]+/)
           .map((p) => p.trim().replace(/\D/g, ''))
           .filter((p) => p.length >= 10 && p.length <= 15),
       };
-      if (defaultInstanceToken) payload.defaultInstanceToken = defaultInstanceToken;
       await api.patch('/tenant', payload);
     },
     onSuccess: () => {
       toast.success('Configurações salvas');
-      setDefaultInstanceToken('');
-      qc.invalidateQueries({ queryKey: ['tenant'] });
-    },
-  });
-
-  const clearToken = useMutation({
-    mutationFn: async () => api.patch('/tenant', { defaultInstanceToken: null }),
-    onSuccess: () => {
-      toast.success('Token removido');
       qc.invalidateQueries({ queryKey: ['tenant'] });
     },
   });
@@ -291,7 +269,7 @@ export default function SettingsPage() {
           {section === 'minha-conexao' && (
             <SectionPanel
               title="Minha conexão WhatsApp"
-              description="Quando configurada, todos os SEUS disparos (e ações que você executa) usam essa conexão. Isso permite que cada usuário da conta use o próprio número. Se vazia, cai no padrão da conta."
+              description="Cada usuário precisa configurar a própria conexão. Disparos, criação de grupos e atualizações saem do seu número. Sem conexão, qualquer ação dá erro — isso é proposital, pra evitar que vários operadores compartilhem o mesmo número e levem ban."
               footer={
                 <Button
                   onClick={() => updateMyConnection.mutate()}
@@ -305,8 +283,8 @@ export default function SettingsPage() {
                 label="Status"
                 helper={
                   me?.hasInstanceToken
-                    ? 'Sua conexão pessoal está ativa. Disparos saem pelo seu número.'
-                    : 'Sem conexão pessoal. Seus disparos usam o padrão da conta.'
+                    ? 'Conexão ativa. Disparos saem pelo seu número.'
+                    : 'Sem conexão configurada. Disparos vão falhar até você preencher abaixo.'
                 }
               >
                 {me?.hasInstanceToken ? (
@@ -324,8 +302,8 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                    Usando padrão da conta
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
+                    Não configurado
                   </span>
                 )}
               </FormRow>
@@ -356,78 +334,6 @@ export default function SettingsPage() {
                   onChange={(e) => setMyInstanceToken(e.target.value)}
                   placeholder={
                     me?.hasInstanceToken ? '•••••••• (manter atual)' : 'cole o token Uazapi'
-                  }
-                  className="font-mono"
-                />
-              </FormRow>
-            </SectionPanel>
-          )}
-
-          {section === 'whatsapp' && (
-            <SectionPanel
-              title="Conexão WhatsApp padrão da conta"
-              description="Conexão fallback: usada quando o usuário logado não tem conexão pessoal configurada. Útil pra ter um número 'da empresa' como padrão, que cada usuário pode sobrescrever em 'Minha conexão'."
-              footer={
-                <Button onClick={() => updateTenant.mutate()} disabled={updateTenant.isPending}>
-                  {updateTenant.isPending ? 'Salvando…' : 'Salvar conexão'}
-                </Button>
-              }
-            >
-              <FormRow
-                label="Status"
-                helper={
-                  tenant?.hasDefaultInstanceToken
-                    ? 'Token salvo e criptografado. Pronto pra uso.'
-                    : 'Nenhum token salvo. Configure abaixo.'
-                }
-              >
-                {tenant?.hasDefaultInstanceToken ? (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="size-3" />
-                      Conectado
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => clearToken.mutate()}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      Remover token
-                    </button>
-                  </div>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                    Desconectado
-                  </span>
-                )}
-              </FormRow>
-
-              <FormRow
-                label="Nome da instância"
-                helper="ID único da sessão Uazapi. Geralmente um UUID."
-              >
-                <Input
-                  value={defaultInstanceName}
-                  onChange={(e) => setDefaultInstanceName(e.target.value)}
-                  placeholder="ex: 4f9d2a5f-ab56-4e43-8b13-1f932b2e0c22"
-                  className="font-mono text-xs"
-                />
-              </FormRow>
-
-              <FormRow
-                label="Token"
-                helper={
-                  tenant?.hasDefaultInstanceToken
-                    ? 'Deixe em branco pra manter o token atual. Cole um novo pra substituir.'
-                    : 'Cole o token raw da Uazapi. Será criptografado antes de armazenar.'
-                }
-              >
-                <Input
-                  type="password"
-                  value={defaultInstanceToken}
-                  onChange={(e) => setDefaultInstanceToken(e.target.value)}
-                  placeholder={
-                    tenant?.hasDefaultInstanceToken ? '•••••••• (manter atual)' : 'cole o token Uazapi'
                   }
                   className="font-mono"
                 />
