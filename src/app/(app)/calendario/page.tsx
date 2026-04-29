@@ -62,7 +62,7 @@ export default function CalendarioPage() {
   }
 
   return (
-    <div className="flex flex-col h-full -m-8 p-6 gap-4">
+    <div className="flex flex-col h-full -mx-4 -my-6 p-4 gap-4">
       <div className="flex items-center justify-between flex-wrap gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-semibold">Calendário</h1>
