@@ -15,8 +15,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { AlertTriangle, Pause, Play, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Pause, Play, Plus, Trash2, X } from 'lucide-react';
 
 function Countdown({ target }: { target: string }) {
   const [, tick] = useState(0);
@@ -58,9 +66,26 @@ interface Schedule {
   cron: string | null;
   instanceName: string;
   groupRemoteIds: string[];
-  message: { id: string; name: string };
+  message: { id: string; name: string; text?: string | null };
   _count: { executions: number };
   executionStats?: ExecutionStats;
+}
+
+type MediaKind = 'AUTO' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'PTT' | 'DOCUMENT';
+
+interface MessageDetail {
+  id: string;
+  name: string;
+  text: string | null;
+  mentionAll: boolean;
+  medias: {
+    id: string;
+    order: number;
+    kind: MediaKind;
+    url: string;
+    thumbUrl: string | null;
+    media: { id: string; mime: string };
+  }[];
 }
 
 type DisplayStatus =
@@ -153,6 +178,7 @@ type HistoryRangeId = (typeof HISTORY_RANGES)[number]['id'];
 export default function AgendamentosPage() {
   const qc = useQueryClient();
   const [historyRange, setHistoryRange] = useState<HistoryRangeId>('7d');
+  const [previewSchedule, setPreviewSchedule] = useState<Schedule | null>(null);
   const { data = [] } = useQuery<Schedule[]>({
     queryKey: ['schedules'],
     queryFn: async () => (await api.get('/schedules')).data,
@@ -260,6 +286,7 @@ export default function AgendamentosPage() {
             onRemove={(id) => {
               if (confirm('Remover permanentemente?')) remove.mutate(id);
             }}
+            onPreview={setPreviewSchedule}
           />
         </TabsContent>
 
@@ -271,6 +298,7 @@ export default function AgendamentosPage() {
             onRemove={(id) => {
               if (confirm('Remover permanentemente?')) remove.mutate(id);
             }}
+            onPreview={setPreviewSchedule}
           />
         </TabsContent>
 
@@ -302,10 +330,111 @@ export default function AgendamentosPage() {
             onRemove={(id) => {
               if (confirm('Remover permanentemente?')) remove.mutate(id);
             }}
+            onPreview={setPreviewSchedule}
           />
         </TabsContent>
       </Tabs>
+
+      <MessagePreviewDialog
+        schedule={previewSchedule}
+        onClose={() => setPreviewSchedule(null)}
+      />
     </div>
+  );
+}
+
+function MessagePreviewDialog({
+  schedule,
+  onClose,
+}: {
+  schedule: Schedule | null;
+  onClose: () => void;
+}) {
+  const open = schedule !== null;
+  const messageId = schedule?.message.id;
+  const { data: detail, isLoading } = useQuery<MessageDetail>({
+    queryKey: ['message-detail', messageId],
+    queryFn: async () => (await api.get(`/messages/${messageId}`)).data,
+    enabled: open && !!messageId,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{schedule?.message.name ?? 'Mensagem'}</DialogTitle>
+          <DialogDescription>
+            {schedule
+              ? `${new Date(schedule.startAt).toLocaleString('pt-BR')} · ${schedule.groupRemoteIds.length} grupo${schedule.groupRemoteIds.length === 1 ? '' : 's'}`
+              : ''}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {isLoading && <div className="text-sm text-muted-foreground">Carregando…</div>}
+
+          {detail && detail.medias.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {detail.medias
+                .slice()
+                .sort((a, b) => a.order - b.order)
+                .map((m) => (
+                  <MediaPreview key={m.id} kind={m.kind} mime={m.media.mime} url={m.url} />
+                ))}
+            </div>
+          )}
+
+          {detail?.text ? (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+              {detail.text}
+            </div>
+          ) : detail && !isLoading ? (
+            <div className="text-sm text-muted-foreground italic">Sem texto.</div>
+          ) : null}
+        </div>
+
+        {schedule && (
+          <DialogFooter>
+            <Link
+              href={`/agendamentos/${schedule.id}`}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Abrir agendamento <ExternalLink className="size-3.5" />
+            </Link>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MediaPreview({ kind, mime, url }: { kind: MediaKind; mime: string; url: string }) {
+  const isImage = kind === 'IMAGE' || mime.startsWith('image/');
+  const isVideo = kind === 'VIDEO' || mime.startsWith('video/');
+  const isAudio = kind === 'AUDIO' || kind === 'PTT' || mime.startsWith('audio/');
+  if (isImage) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="" className="w-full h-32 object-cover rounded-md border" />
+      </a>
+    );
+  }
+  if (isVideo) {
+    return <video src={url} controls className="w-full h-32 object-cover rounded-md border" />;
+  }
+  if (isAudio) {
+    return <audio src={url} controls className="w-full" />;
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center justify-center h-32 rounded-md border bg-muted/30 text-xs text-muted-foreground hover:bg-muted/50"
+    >
+      Abrir documento
+    </a>
   );
 }
 
@@ -322,11 +451,13 @@ function SchedulesTable({
   emptyText,
   onAction,
   onRemove,
+  onPreview,
 }: {
   rows: Schedule[];
   emptyText: string;
   onAction: (params: { id: string; action: 'pause' | 'resume' | 'cancel' }) => void;
   onRemove: (id: string) => void;
+  onPreview: (s: Schedule) => void;
 }) {
   const nowMs = Date.now();
   return (
@@ -360,9 +491,13 @@ function SchedulesTable({
             return (
               <TableRow key={s.id} className="hover:bg-muted/30 transition-colors">
                 <TableCell className="font-medium align-top py-4">
-                  <Link href={`/agendamentos/${s.id}`} className="hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => onPreview(s)}
+                    className="text-left hover:underline"
+                  >
                     {s.message.name}
-                  </Link>
+                  </button>
                 </TableCell>
                 <TableCell
                   className="align-top py-4 text-muted-foreground text-xs font-mono truncate max-w-[12rem]"
