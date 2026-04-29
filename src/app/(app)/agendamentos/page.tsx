@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { endOfDay, subDays } from 'date-fns';
+import { endOfDay, startOfDay, subDays } from 'date-fns';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +67,6 @@ type DisplayStatus =
   | 'concluido'
   | 'falhou'
   | 'agendado'
-  | 'atrasado'
   | 'pausado'
   | 'cancelado'
   | 'ativo';
@@ -75,31 +74,33 @@ type DisplayStatus =
 const DISPLAY_STATUS_META: Record<DisplayStatus, { label: string; className: string }> = {
   concluido: {
     label: 'Concluído',
-    className: 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:text-emerald-400',
+    className:
+      'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/50',
   },
   falhou: {
     label: 'Falhou',
-    className: 'bg-red-500/15 text-red-700 border border-red-500/30 dark:text-red-400',
+    className:
+      'bg-red-600 text-white border border-red-700 font-semibold shadow-sm dark:bg-red-600 dark:text-white dark:border-red-800',
   },
   agendado: {
     label: 'Agendado',
-    className: 'bg-orange-500/15 text-orange-700 border border-orange-500/30 dark:text-orange-400',
-  },
-  atrasado: {
-    label: 'Atrasado',
-    className: 'bg-red-600/20 text-red-700 border border-red-600/40 dark:text-red-300',
+    className:
+      'bg-orange-100 text-orange-800 border border-orange-300 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-700/50',
   },
   pausado: {
     label: 'Pausado',
-    className: 'bg-amber-500/15 text-amber-700 border border-amber-500/30 dark:text-amber-400',
+    className:
+      'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700/50',
   },
   cancelado: {
     label: 'Cancelado',
-    className: 'bg-zinc-500/15 text-zinc-600 border border-zinc-500/30 dark:text-zinc-400',
+    className:
+      'bg-zinc-100 text-zinc-600 border border-zinc-300 dark:bg-zinc-800/60 dark:text-zinc-400 dark:border-zinc-700',
   },
   ativo: {
     label: 'Ativo',
-    className: 'bg-blue-500/15 text-blue-700 border border-blue-500/30 dark:text-blue-400',
+    className:
+      'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/50',
   },
 };
 
@@ -112,12 +113,18 @@ function statsOf(s: Schedule): ExecutionStats {
 function deriveDisplayStatus(s: Schedule, nowMs: number): DisplayStatus {
   if (s.status === 'CANCELED') return 'cancelado';
   if (s.status === 'PAUSED') return 'pausado';
+  const stats = statsOf(s);
   if (s.status === 'COMPLETED') {
-    return statsOf(s).failed > 0 ? 'falhou' : 'concluido';
+    return stats.failed > 0 ? 'falhou' : 'concluido';
   }
+  // ACTIVE
   if (s.type !== 'ONCE') return 'ativo';
   const startMs = new Date(s.startAt).getTime();
-  if (startMs < nowMs - 60_000) return 'atrasado';
+  if (startMs < nowMs - 60_000) {
+    // ONCE no passado: se rodou e tudo deu certo, concluído; se rodou e falhou, falhou; se nem rodou, falhou.
+    if (stats.total === 0) return 'falhou';
+    return stats.failed > 0 ? 'falhou' : 'concluido';
+  }
   return 'agendado';
 }
 
@@ -125,8 +132,11 @@ type Bucket = 'hoje' | 'proximos' | 'historico';
 
 function bucketFor(s: Schedule, now: Date): Bucket {
   if (s.status === 'COMPLETED' || s.status === 'CANCELED') return 'historico';
+  // Recorrente ativo/pausado é sempre relevante hoje
   if (s.type !== 'ONCE') return 'hoje';
   const start = new Date(s.startAt).getTime();
+  // ONCE com data no passado vai pro histórico (mesmo se status ainda for ACTIVE/PAUSED)
+  if (start < startOfDay(now).getTime()) return 'historico';
   if (start <= endOfDay(now).getTime()) return 'hoje';
   return 'proximos';
 }
