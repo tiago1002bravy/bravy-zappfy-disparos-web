@@ -23,9 +23,11 @@ import {
   KeyRound,
   MessageCircle,
   Plus,
+  ShieldCheck,
   Trash2,
   UserCog,
   Users,
+  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +50,13 @@ interface ApiKey {
   revokedAt: string | null;
 }
 
-type Section = 'geral' | 'minha-conexao' | 'usuarios' | 'participantes' | 'api-keys';
+type Section =
+  | 'geral'
+  | 'minha-conexao'
+  | 'usuarios'
+  | 'participantes'
+  | 'api-keys'
+  | 'workspace-requests';
 
 const SECTIONS: { id: Section; label: string; icon: typeof Building2; description: string }[] = [
   {
@@ -83,6 +91,14 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
   },
 ];
 
+// Aba 'workspace-requests' aparece apenas pra super-admins (filtragem feita no render)
+const SUPERADMIN_SECTION: { id: Section; label: string; icon: typeof Building2; description: string } = {
+  id: 'workspace-requests',
+  label: 'Solicitações',
+  icon: ShieldCheck,
+  description: 'Aprovar ou rejeitar pedidos de novos workspaces (super-admin).',
+};
+
 interface UserListItem {
   id: string;
   name: string;
@@ -101,6 +117,21 @@ interface Me {
   role: string;
   instanceName: string | null;
   hasInstanceToken: boolean;
+  isSuperAdmin: boolean;
+}
+
+interface WorkspaceRequest {
+  id: string;
+  name: string;
+  slug: string;
+  requesterName: string;
+  requesterEmail: string;
+  reason: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedByEmail: string | null;
+  rejectionReason: string | null;
 }
 
 export default function SettingsPage() {
@@ -211,6 +242,37 @@ export default function SettingsPage() {
     },
   });
 
+  // ----- Workspace requests (super-admin) -----
+  const isSuperAdmin = !!me?.isSuperAdmin;
+  const { data: workspaceRequests = [] } = useQuery<WorkspaceRequest[]>({
+    queryKey: ['workspace-requests'],
+    queryFn: async () => (await api.get('/workspace-requests')).data,
+    enabled: isSuperAdmin,
+  });
+
+  const approveRequest = useMutation({
+    mutationFn: async (id: string) => api.post(`/workspace-requests/${id}/approve`),
+    onSuccess: () => {
+      toast.success('Workspace aprovado e criado');
+      qc.invalidateQueries({ queryKey: ['workspace-requests'] });
+    },
+    onError: (err: unknown) => {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao aprovar');
+    },
+  });
+
+  const rejectRequest = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) =>
+      api.post(`/workspace-requests/${id}/reject`, { reason }),
+    onSuccess: () => {
+      toast.success('Solicitação rejeitada');
+      qc.invalidateQueries({ queryKey: ['workspace-requests'] });
+    },
+  });
+
+  const visibleSections = isSuperAdmin ? [...SECTIONS, SUPERADMIN_SECTION] : SECTIONS;
+
   useEffect(() => {
     if (tenant) {
       setTz(tenant.timezone);
@@ -271,7 +333,7 @@ export default function SettingsPage() {
       <div className="flex gap-8">
         <aside className="w-56 shrink-0">
           <nav className="flex flex-col gap-0.5 sticky top-4">
-            {SECTIONS.map((s) => {
+            {visibleSections.map((s) => {
               const Icon = s.icon;
               const active = section === s.id;
               return (
@@ -422,50 +484,66 @@ export default function SettingsPage() {
                 label="Adicionar pessoa"
                 helper="Defina nome, e-mail, senha (mínimo 8 caracteres) e o nível de acesso."
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Input
-                    placeholder="Nome"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                  />
-                  <Input
-                    type="email"
-                    placeholder="E-mail"
-                    value={newUserEmail}
-                    onChange={(e) => setNewUserEmail(e.target.value)}
-                  />
-                  <Input
-                    type="password"
-                    placeholder="Senha (min. 8)"
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                  />
-                  <select
-                    value={newUserRole}
-                    onChange={(e) =>
-                      setNewUserRole(e.target.value as 'OWNER' | 'ADMIN' | 'OPERATOR')
-                    }
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="OPERATOR">Operador (só dispara)</option>
-                    <option value="ADMIN">Admin (gerencia equipe)</option>
-                  </select>
-                </div>
-                <div className="pt-2">
-                  <Button
-                    onClick={() => createUser.mutate()}
-                    disabled={
-                      !newUserName ||
-                      !newUserEmail ||
-                      newUserPassword.length < 8 ||
-                      createUser.isPending
-                    }
-                    size="sm"
-                  >
-                    <Plus className="size-4 mr-1.5" />
-                    Adicionar usuário
-                  </Button>
-                </div>
+                {/* form wrapping + autoComplete="off" + unusual name attrs evitam o browser autopreencher com o login do user atual */}
+                <form
+                  autoComplete="off"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    createUser.mutate();
+                  }}
+                  className="space-y-2"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <Input
+                      name="new-user-name"
+                      placeholder="Nome"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <Input
+                      type="email"
+                      name="new-user-email"
+                      placeholder="E-mail"
+                      value={newUserEmail}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <Input
+                      type="password"
+                      name="new-user-password"
+                      placeholder="Senha (min. 8)"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                    <select
+                      value={newUserRole}
+                      onChange={(e) =>
+                        setNewUserRole(e.target.value as 'OWNER' | 'ADMIN' | 'OPERATOR')
+                      }
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="OPERATOR">Operador (só dispara)</option>
+                      <option value="ADMIN">Admin (gerencia equipe)</option>
+                    </select>
+                  </div>
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={
+                        !newUserName ||
+                        !newUserEmail ||
+                        newUserPassword.length < 8 ||
+                        createUser.isPending
+                      }
+                      size="sm"
+                    >
+                      <Plus className="size-4 mr-1.5" />
+                      Adicionar usuário
+                    </Button>
+                  </div>
+                </form>
               </FormRow>
 
               <div className="space-y-2 pt-2">
@@ -659,6 +737,105 @@ export default function SettingsPage() {
                     </TableBody>
                   </Table>
                 </div>
+              </div>
+            </SectionPanel>
+          )}
+
+          {section === 'workspace-requests' && isSuperAdmin && (
+            <SectionPanel
+              title="Solicitações de novos workspaces"
+              description="Pedidos de criação de novos workspaces aguardando revisão. Ao aprovar, a conta é criada automaticamente e o usuário pode fazer login."
+            >
+              <div className="space-y-3">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {workspaceRequests.filter((r) => r.status === 'PENDING').length} pendente(s) · {workspaceRequests.length} total
+                </Label>
+                {workspaceRequests.length === 0 && (
+                  <div className="rounded-md border bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+                    Nenhuma solicitação ainda.
+                  </div>
+                )}
+                {workspaceRequests.map((r) => (
+                  <div
+                    key={r.id}
+                    className={cn(
+                      'rounded-lg border p-4 space-y-3',
+                      r.status === 'PENDING' && 'border-orange-500/40 bg-orange-500/5',
+                      r.status === 'APPROVED' && 'border-emerald-500/30 bg-emerald-500/5 opacity-70',
+                      r.status === 'REJECTED' && 'border-red-500/30 bg-red-500/5 opacity-70',
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{r.name}</span>
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">/{r.slug}</code>
+                          <span
+                            className={cn(
+                              'text-[10px] uppercase font-medium px-2 py-0.5 rounded-full border',
+                              r.status === 'PENDING' &&
+                                'border-orange-500/40 text-orange-700 dark:text-orange-300 bg-orange-500/10',
+                              r.status === 'APPROVED' &&
+                                'border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10',
+                              r.status === 'REJECTED' &&
+                                'border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10',
+                            )}
+                          >
+                            {r.status}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {r.requesterName} · {r.requesterEmail}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Solicitado em {new Date(r.createdAt).toLocaleString('pt-BR')}
+                        </div>
+                        {r.reason && (
+                          <div className="text-sm pt-2 italic text-muted-foreground border-l-2 border-muted pl-3">
+                            "{r.reason}"
+                          </div>
+                        )}
+                        {r.reviewedAt && (
+                          <div className="text-xs text-muted-foreground pt-1">
+                            Revisado em {new Date(r.reviewedAt).toLocaleString('pt-BR')} por{' '}
+                            {r.reviewedByEmail}
+                            {r.rejectionReason && ` — motivo: ${r.rejectionReason}`}
+                          </div>
+                        )}
+                      </div>
+                      {r.status === 'PENDING' && (
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (confirm(`Aprovar workspace "${r.name}"? Vai criar a conta.`)) {
+                                approveRequest.mutate(r.id);
+                              }
+                            }}
+                            disabled={approveRequest.isPending}
+                          >
+                            <CheckCircle2 className="size-4 mr-1.5" />
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const reason = prompt('Motivo da rejeição (opcional):');
+                              if (reason !== null) {
+                                rejectRequest.mutate({ id: r.id, reason: reason || '' });
+                              }
+                            }}
+                            disabled={rejectRequest.isPending}
+                          >
+                            <XCircle className="size-4 mr-1.5" />
+                            Rejeitar
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </SectionPanel>
           )}
