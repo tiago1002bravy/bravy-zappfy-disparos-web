@@ -341,7 +341,7 @@ export default function MensagensPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 pb-5 border-b">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Mensagens</h1>

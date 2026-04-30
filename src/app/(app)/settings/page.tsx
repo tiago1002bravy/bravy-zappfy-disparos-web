@@ -24,6 +24,7 @@ import {
   MessageCircle,
   Plus,
   Trash2,
+  UserCog,
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,7 +48,7 @@ interface ApiKey {
   revokedAt: string | null;
 }
 
-type Section = 'geral' | 'minha-conexao' | 'participantes' | 'api-keys';
+type Section = 'geral' | 'minha-conexao' | 'usuarios' | 'participantes' | 'api-keys';
 
 const SECTIONS: { id: Section; label: string; icon: typeof Building2; description: string }[] = [
   {
@@ -63,6 +64,12 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
     description: 'Conexão WhatsApp do usuário logado — obrigatória pra disparos.',
   },
   {
+    id: 'usuarios',
+    label: 'Usuários',
+    icon: UserCog,
+    description: 'Equipe da conta. Cada usuário tem o próprio WhatsApp.',
+  },
+  {
     id: 'participantes',
     label: 'Participantes',
     icon: Users,
@@ -75,6 +82,17 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
     description: 'Chaves para integrações externas (n8n, scripts).',
   },
 ];
+
+interface UserListItem {
+  id: string;
+  name: string;
+  email: string;
+  role: 'OWNER' | 'ADMIN' | 'OPERATOR';
+  instanceName: string | null;
+  hasInstanceToken: boolean;
+  createdAt: string;
+  isMe: boolean;
+}
 
 interface Me {
   id: string;
@@ -117,10 +135,18 @@ export default function SettingsPage() {
 
   const updateMyConnection = useMutation({
     mutationFn: async () => {
-      const payload: Record<string, unknown> = {
-        instanceName: myInstanceName || null,
-      };
+      // Só envia campos que mudaram, pra evitar zerar acidentalmente quando o
+      // form ainda não carregou (`me` undefined → myInstanceName === '').
+      const payload: Record<string, unknown> = {};
+      const currentName = me?.instanceName ?? '';
+      if (myInstanceName !== currentName) {
+        payload.instanceName = myInstanceName || null;
+      }
       if (myInstanceToken) payload.instanceToken = myInstanceToken;
+      if (Object.keys(payload).length === 0) {
+        toast.info('Nada pra atualizar');
+        return;
+      }
       await api.patch('/users/me/connection', payload);
     },
     onSuccess: () => {
@@ -136,6 +162,52 @@ export default function SettingsPage() {
     onSuccess: () => {
       toast.success('Conexão pessoal removida');
       qc.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+
+  // ----- Multi-user (equipe da conta) -----
+  const { data: users = [] } = useQuery<UserListItem[]>({
+    queryKey: ['users'],
+    queryFn: async () => (await api.get('/users')).data,
+  });
+
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'OWNER' | 'ADMIN' | 'OPERATOR'>('OPERATOR');
+
+  const createUser = useMutation({
+    mutationFn: async () => {
+      await api.post('/users', {
+        name: newUserName,
+        email: newUserEmail.toLowerCase().trim(),
+        password: newUserPassword,
+        role: newUserRole,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Usuário criado');
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserRole('OPERATOR');
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: unknown) => {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao criar usuário');
+    },
+  });
+
+  const removeUser = useMutation({
+    mutationFn: async (id: string) => api.delete(`/users/${id}`),
+    onSuccess: () => {
+      toast.success('Usuário removido');
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: unknown) => {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao remover');
     },
   });
 
@@ -341,6 +413,150 @@ export default function SettingsPage() {
             </SectionPanel>
           )}
 
+          {section === 'usuarios' && (
+            <SectionPanel
+              title="Equipe da conta"
+              description="Cada pessoa do time tem o próprio login e configura a própria conexão WhatsApp em 'Minha conexão'. Apenas owner/admin podem criar e remover usuários."
+            >
+              <FormRow
+                label="Adicionar pessoa"
+                helper="Defina nome, e-mail, senha (mínimo 8 caracteres) e o nível de acesso."
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Nome"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                  />
+                  <Input
+                    type="email"
+                    placeholder="E-mail"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Senha (min. 8)"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                  />
+                  <select
+                    value={newUserRole}
+                    onChange={(e) =>
+                      setNewUserRole(e.target.value as 'OWNER' | 'ADMIN' | 'OPERATOR')
+                    }
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="OPERATOR">Operador (só dispara)</option>
+                    <option value="ADMIN">Admin (gerencia equipe)</option>
+                  </select>
+                </div>
+                <div className="pt-2">
+                  <Button
+                    onClick={() => createUser.mutate()}
+                    disabled={
+                      !newUserName ||
+                      !newUserEmail ||
+                      newUserPassword.length < 8 ||
+                      createUser.isPending
+                    }
+                    size="sm"
+                  >
+                    <Plus className="size-4 mr-1.5" />
+                    Adicionar usuário
+                  </Button>
+                </div>
+              </FormRow>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Equipe ({users.length})
+                </Label>
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead>Nome</TableHead>
+                        <TableHead>E-mail</TableHead>
+                        <TableHead>Acesso</TableHead>
+                        <TableHead>WhatsApp</TableHead>
+                        <TableHead className="w-12" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            Carregando…
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {users.map((u) => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium">
+                            {u.name}
+                            {u.isMe && (
+                              <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                (você)
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                          <TableCell>
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
+                                u.role === 'OWNER' &&
+                                  'border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-300',
+                                u.role === 'ADMIN' &&
+                                  'border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300',
+                                u.role === 'OPERATOR' &&
+                                  'border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300',
+                              )}
+                            >
+                              {u.role}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {u.hasInstanceToken ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
+                                <CheckCircle2 className="size-3" />
+                                Configurado
+                              </span>
+                            ) : (
+                              <span className="text-xs text-orange-700 dark:text-orange-400">
+                                Pendente
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!u.isMe && u.role !== 'OWNER' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  if (
+                                    confirm(`Remover ${u.name} (${u.email}) permanentemente?`)
+                                  ) {
+                                    removeUser.mutate(u.id);
+                                  }
+                                }}
+                                title="Remover"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </SectionPanel>
+          )}
+
           {section === 'participantes' && (
             <SectionPanel
               title="Participantes padrão"
@@ -404,15 +620,15 @@ export default function SettingsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {keys.length === 0 && (
+                      {keys.filter((k) => !k.revokedAt).length === 0 && (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            Nenhuma chave criada.
+                            Nenhuma chave ativa.
                           </TableCell>
                         </TableRow>
                       )}
-                      {keys.map((k) => (
-                        <TableRow key={k.id} className={k.revokedAt ? 'opacity-50' : ''}>
+                      {keys.filter((k) => !k.revokedAt).map((k) => (
+                        <TableRow key={k.id}>
                           <TableCell className="font-medium">{k.name}</TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">
                             {k.prefix}…
@@ -424,17 +640,19 @@ export default function SettingsPage() {
                             {new Date(k.createdAt).toLocaleString('pt-BR')}
                           </TableCell>
                           <TableCell>
-                            {!k.revokedAt && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => revokeKey.mutate(k.id)}
-                                title="Revogar"
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                if (confirm(`Revogar chave "${k.name}"?`)) {
+                                  revokeKey.mutate(k.id);
+                                }
+                              }}
+                              title="Revogar"
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

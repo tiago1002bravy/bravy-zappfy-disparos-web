@@ -13,11 +13,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { InstanceCredentialsField, type InstanceCreds } from '@/components/instance-credentials-field';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { RefreshCw, Plus } from 'lucide-react';
+import { RefreshCw, Plus, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 
 interface Group {
   id: string;
@@ -29,13 +29,14 @@ interface Group {
   syncedAt: string;
 }
 
+interface Me {
+  hasInstanceToken: boolean;
+}
+
 export default function GruposPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [openSync, setOpenSync] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
-  const [creds, setCreds] = useState<InstanceCreds>({ instanceName: '', instanceToken: '' });
-  const [createCreds, setCreateCreds] = useState<InstanceCreds>({ instanceName: '', instanceToken: '' });
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupParticipants, setNewGroupParticipants] = useState('');
 
@@ -44,29 +45,29 @@ export default function GruposPage() {
     queryFn: async () => (await api.get('/groups')).data,
   });
 
-  const { data: tenantDefaults } = useQuery<{
-    hasInstance: boolean;
-    instanceName: string | null;
-    defaultParticipants: string[];
-  }>({
+  const { data: me } = useQuery<Me>({
+    queryKey: ['me'],
+    queryFn: async () => (await api.get('/users/me')).data,
+  });
+
+  const { data: tenantDefaults } = useQuery<{ defaultParticipants: string[] }>({
     queryKey: ['tenant-defaults'],
     queryFn: async () => (await api.get('/tenant/defaults')).data,
   });
 
   const sync = useMutation({
     mutationFn: async () => {
-      let payload: Record<string, unknown> = creds.useAccountDefault
-        ? {}
-        : { instanceName: creds.instanceName, instanceToken: creds.instanceToken };
-      const { data } = await api.post('/groups/sync', payload);
+      const { data } = await api.post('/groups/sync', {});
       return data;
     },
     onSuccess: (data: Group[]) => {
-      toast.success(`${data.length} grupo(s) sincronizado(s)`);
+      toast.success(`${data.length} grupo(s) sincronizado(s) da sua instância`);
       qc.invalidateQueries({ queryKey: ['groups'] });
-      setOpenSync(false);
     },
-    onError: () => toast.error('Falha ao sincronizar'),
+    onError: (err: unknown) => {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao sincronizar');
+    },
   });
 
   const createGroup = useMutation({
@@ -75,12 +76,7 @@ export default function GruposPage() {
         .split(/[\s,;]+/)
         .map((p) => p.trim().replace(/\D/g, ''))
         .filter((p) => p.length >= 10 && p.length <= 15);
-      const payload: Record<string, unknown> = { name: newGroupName, participants };
-      if (!createCreds.useAccountDefault) {
-        payload.instanceName = createCreds.instanceName;
-        payload.instanceToken = createCreds.instanceToken;
-      }
-      const { data } = await api.post('/groups', payload);
+      const { data } = await api.post('/groups', { name: newGroupName, participants });
       return data;
     },
     onSuccess: () => {
@@ -100,24 +96,44 @@ export default function GruposPage() {
     g.name.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const noConnection = me && !me.hasInstanceToken;
+
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 pb-5 border-b">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Grupos</h1>
-          <p className="text-sm text-muted-foreground">Cache local dos grupos do WhatsApp</p>
+          <p className="text-sm text-muted-foreground">
+            Cache local dos grupos da sua instância WhatsApp
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setOpenCreate(true)}>
+          <Button variant="outline" onClick={() => setOpenCreate(true)} disabled={!!noConnection}>
             <Plus className="size-4 mr-2" />
             Criar grupo
           </Button>
-          <Button onClick={() => setOpenSync(true)}>
-            <RefreshCw className="size-4 mr-2" />
-            Sincronizar
+          <Button onClick={() => sync.mutate()} disabled={!!noConnection || sync.isPending}>
+            <RefreshCw className={`size-4 mr-2 ${sync.isPending ? 'animate-spin' : ''}`} />
+            {sync.isPending ? 'Sincronizando…' : 'Sincronizar'}
           </Button>
         </div>
       </div>
+
+      {noConnection && (
+        <div className="flex items-start gap-3 rounded-lg border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm text-orange-800 dark:text-orange-300">
+          <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="font-medium">Você ainda não configurou sua conexão WhatsApp.</div>
+            <div className="text-xs">
+              Sincronizar e criar grupos exigem conexão pessoal. Vai em{' '}
+              <Link href="/settings" className="underline font-medium">
+                Configurações → Minha conexão
+              </Link>{' '}
+              pra cadastrar a sua instância.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <Input
@@ -176,7 +192,10 @@ export default function GruposPage() {
             <DialogTitle>Criar grupo no WhatsApp</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <InstanceCredentialsField value={createCreds} onChange={setCreateCreds} />
+            <p className="text-xs text-muted-foreground">
+              O grupo será criado na sua instância pessoal (configurada em Configurações → Minha
+              conexão).
+            </p>
             <div className="space-y-2">
               <Label>Nome do grupo</Label>
               <Input
@@ -186,7 +205,7 @@ export default function GruposPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Participantes adicionais (números com DDI, um por linha ou separados por vírgula)</Label>
+              <Label>Participantes (números com DDI, um por linha ou separados por vírgula)</Label>
               <Textarea
                 rows={4}
                 value={newGroupParticipants}
@@ -202,47 +221,24 @@ export default function GruposPage() {
                     {tenantDefaults?.defaultParticipants.join(', ')}
                   </div>
                   <div className="text-xs text-zinc-600 dark:text-zinc-400">
-                    Configurados em Settings, serão mesclados automaticamente.
+                    Configurados em Configurações → Participantes, serão mesclados automaticamente.
                   </div>
                 </div>
               ) : (
                 <p className="text-xs text-zinc-500">
-                  Apenas dígitos. DDI + DDD + número. Configure participantes padrão em Settings pra adicionar
-                  automaticamente em todo grupo.
+                  Apenas dígitos. DDI + DDD + número. Configure participantes padrão em
+                  Configurações pra adicionar automaticamente em todo grupo criado.
                 </p>
               )}
             </div>
             <Button
               onClick={() => createGroup.mutate()}
-              disabled={
-                (!createCreds.useAccountDefault &&
-                  (!createCreds.instanceName || !createCreds.instanceToken)) ||
-                !newGroupName ||
-                createGroup.isPending
-              }
+              disabled={!newGroupName || createGroup.isPending}
               className="w-full"
             >
               {createGroup.isPending ? 'Criando...' : 'Criar grupo'}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={openSync} onOpenChange={setOpenSync}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sincronizar grupos</DialogTitle>
-          </DialogHeader>
-          <InstanceCredentialsField value={creds} onChange={setCreds} />
-          <Button
-            onClick={() => sync.mutate()}
-            disabled={
-              (!creds.useAccountDefault && (!creds.instanceName || !creds.instanceToken)) ||
-              sync.isPending
-            }
-          >
-            {sync.isPending ? 'Sincronizando...' : 'Iniciar sincronização'}
-          </Button>
         </DialogContent>
       </Dialog>
     </div>
