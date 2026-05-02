@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
@@ -55,6 +56,7 @@ type Section =
   | 'minha-conexao'
   | 'usuarios'
   | 'participantes'
+  | 'grupos-defaults'
   | 'api-keys'
   | 'workspace-requests';
 
@@ -82,6 +84,12 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
     label: 'Participantes',
     icon: Users,
     description: 'Contatos adicionados automaticamente em novos grupos.',
+  },
+  {
+    id: 'grupos-defaults',
+    label: 'Defaults de grupos',
+    icon: Users,
+    description: 'Admins, descrição, foto e permissões aplicados em todo grupo criado.',
   },
   {
     id: 'api-keys',
@@ -149,6 +157,12 @@ export default function SettingsPage() {
   const [newKeyPlain, setNewKeyPlain] = useState<string | null>(null);
 
   const [defaultParticipants, setDefaultParticipants] = useState('');
+
+  // Defaults de grupos
+  const [defaultGroupAdmins, setDefaultGroupAdmins] = useState('');
+  const [defaultGroupDescription, setDefaultGroupDescription] = useState('');
+  const [defaultGroupLocked, setDefaultGroupLocked] = useState(true);
+  const [defaultGroupAnnounce, setDefaultGroupAnnounce] = useState(true);
 
   const [myInstanceName, setMyInstanceName] = useState('');
   const [myInstanceToken, setMyInstanceToken] = useState('');
@@ -280,6 +294,49 @@ export default function SettingsPage() {
       setDefaultParticipants((tenant.defaultParticipants ?? []).join('\n'));
     }
   }, [tenant]);
+
+  const { data: groupDefaults } = useQuery<{
+    defaultGroupAdmins: string[];
+    defaultGroupDescription: string | null;
+    defaultGroupPictureMediaId: string | null;
+    defaultGroupLocked: boolean;
+    defaultGroupAnnounce: boolean;
+  }>({
+    queryKey: ['tenant-defaults'],
+    queryFn: async () => (await api.get('/tenant/defaults')).data,
+  });
+
+  useEffect(() => {
+    if (groupDefaults) {
+      setDefaultGroupAdmins((groupDefaults.defaultGroupAdmins ?? []).join('\n'));
+      setDefaultGroupDescription(groupDefaults.defaultGroupDescription ?? '');
+      setDefaultGroupLocked(groupDefaults.defaultGroupLocked);
+      setDefaultGroupAnnounce(groupDefaults.defaultGroupAnnounce);
+    }
+  }, [groupDefaults]);
+
+  const updateGroupDefaults = useMutation({
+    mutationFn: async () => {
+      const admins = defaultGroupAdmins
+        .split(/[\s,;]+/)
+        .map((p) => p.trim().replace(/\D/g, ''))
+        .filter((p) => p.length >= 10 && p.length <= 15);
+      await api.patch('/tenant/group-defaults', {
+        defaultGroupAdmins: admins,
+        defaultGroupDescription: defaultGroupDescription || null,
+        defaultGroupLocked,
+        defaultGroupAnnounce,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Defaults de grupos salvos');
+      qc.invalidateQueries({ queryKey: ['tenant-defaults'] });
+    },
+    onError: (err: unknown) => {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao salvar');
+    },
+  });
 
   const updateTenant = useMutation({
     mutationFn: async () => {
@@ -657,6 +714,75 @@ export default function SettingsPage() {
                   className="font-mono text-sm"
                 />
               </FormRow>
+            </SectionPanel>
+          )}
+
+          {section === 'grupos-defaults' && (
+            <SectionPanel
+              title="Defaults de grupos"
+              description="Aplicados em TODO grupo criado via front, API ou MCP. Pode ser sobrescrito por chamada."
+              footer={
+                <Button
+                  onClick={() => updateGroupDefaults.mutate()}
+                  disabled={updateGroupDefaults.isPending}
+                >
+                  {updateGroupDefaults.isPending ? 'Salvando…' : 'Salvar defaults'}
+                </Button>
+              }
+            >
+              <FormRow
+                label="Admins padrão"
+                helper="Números (com DDI) que serão adicionados e promovidos a admin em todo grupo criado. Um por linha ou separados por vírgula."
+              >
+                <Textarea
+                  rows={4}
+                  value={defaultGroupAdmins}
+                  onChange={(e) => setDefaultGroupAdmins(e.target.value)}
+                  placeholder="5521986333317&#10;5524974022570"
+                  className="font-mono text-sm"
+                />
+              </FormRow>
+
+              <FormRow
+                label="Descrição padrão"
+                helper="Texto aplicado como descrição (Topic) do grupo logo após a criação."
+              >
+                <Textarea
+                  rows={6}
+                  value={defaultGroupDescription}
+                  onChange={(e) => setDefaultGroupDescription(e.target.value)}
+                  placeholder="🚀 Bem-vindo ao grupo! Aqui você encontra..."
+                />
+              </FormRow>
+
+              <FormRow
+                label="Só admins editam o grupo (Locked)"
+                helper="Quando ativado, apenas administradores podem alterar nome, foto e descrição."
+              >
+                <div className="flex items-center gap-3">
+                  <Switch checked={defaultGroupLocked} onCheckedChange={setDefaultGroupLocked} />
+                  <span className="text-sm text-muted-foreground">
+                    {defaultGroupLocked ? 'Sim' : 'Não'}
+                  </span>
+                </div>
+              </FormRow>
+
+              <FormRow
+                label="Só admins enviam mensagens (Announce)"
+                helper="Quando ativado, mensagens só de administradores. Ideal pra grupos broadcast."
+              >
+                <div className="flex items-center gap-3">
+                  <Switch checked={defaultGroupAnnounce} onCheckedChange={setDefaultGroupAnnounce} />
+                  <span className="text-sm text-muted-foreground">
+                    {defaultGroupAnnounce ? 'Sim' : 'Não'}
+                  </span>
+                </div>
+              </FormRow>
+
+              <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                Foto padrão: ainda não disponível pelo front (use a API <code>PATCH /tenant/group-defaults</code> com{' '}
+                <code>defaultGroupPictureMediaId</code> apontando pra um asset em /midias).
+              </div>
             </SectionPanel>
           )}
 
