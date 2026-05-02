@@ -145,7 +145,7 @@ export default function GroupListsPage() {
                 </TableCell>
                 <TableCell className="text-right py-3 pr-3">
                   <div className="flex items-center justify-end gap-2">
-                    <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                    <div className="flex items-center gap-0.5 rounded-md border border-border bg-background/50">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -193,7 +193,7 @@ export default function GroupListsPage() {
                     key={c}
                     type="button"
                     onClick={() => setColor(c)}
-                    className={`size-8 rounded-full border-2 ${color === c ? 'border-zinc-900 dark:border-zinc-100' : 'border-transparent'}`}
+                    className={`size-8 rounded-full border-2 transition-all ${color === c ? 'border-foreground ring-2 ring-brand/30' : 'border-transparent'}`}
                     style={{ background: c }}
                   />
                 ))}
@@ -208,14 +208,14 @@ export default function GroupListsPage() {
               />
               <div className="border rounded max-h-64 overflow-auto divide-y">
                 {filtered.map((g) => (
-                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer transition-colors">
                     <Checkbox checked={selected.includes(g.id)} onCheckedChange={() => toggle(g.id)} />
                     <span className="flex-1 text-sm">{g.name}</span>
-                    <span className="text-xs text-zinc-500">{g.instanceName}</span>
+                    <span className="text-xs text-muted-foreground">{g.instanceName}</span>
                   </label>
                 ))}
                 {filtered.length === 0 && (
-                  <div className="p-4 text-center text-sm text-zinc-500">Nenhum grupo encontrado</div>
+                  <div className="p-4 text-center text-sm text-muted-foreground">Nenhum grupo encontrado</div>
                 )}
               </div>
             </div>

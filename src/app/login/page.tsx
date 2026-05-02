@@ -15,7 +15,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Zap } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -85,10 +86,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Zappfy Disparos</CardTitle>
+    <div className="relative flex flex-1 items-center justify-center p-4 overflow-hidden">
+      {/* Glow verde de fundo */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(60% 50% at 50% 0%, color-mix(in oklch, var(--brand) 22%, transparent) 0%, transparent 70%), radial-gradient(40% 40% at 80% 90%, color-mix(in oklch, var(--brand) 14%, transparent) 0%, transparent 70%)',
+        }}
+      />
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <Card className="w-full max-w-md border-border/60 shadow-xl backdrop-blur-sm">
+        <CardHeader className="text-center items-center">
+          <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-xl bg-brand text-brand-foreground shadow-[0_0_30px_-4px_var(--brand)]">
+            <Zap className="size-5 fill-current" />
+          </div>
+          <CardTitle className="text-xl">Zappfy Disparos</CardTitle>
           <CardDescription>Agendamento de disparos WhatsApp</CardDescription>
         </CardHeader>
         <CardContent>

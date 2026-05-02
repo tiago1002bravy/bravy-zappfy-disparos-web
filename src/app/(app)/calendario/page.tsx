@@ -66,7 +66,7 @@ export default function CalendarioPage() {
       <div className="flex items-center justify-between flex-wrap gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-semibold">Calendário</h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted-foreground">
             Visão temporal de disparos, agendamentos e atualizações de grupo.
           </p>
         </div>
@@ -85,8 +85,8 @@ export default function CalendarioPage() {
             <button
               type="button"
               onClick={() => setView('week')}
-              className={`px-3 py-1.5 text-sm ${
-                view === 'week' ? 'bg-zinc-200 dark:bg-zinc-800' : ''
+              className={`px-3 py-1.5 text-sm transition-colors ${
+                view === 'week' ? 'bg-brand text-brand-foreground' : 'hover:bg-muted'
               }`}
             >
               Semana
@@ -94,8 +94,8 @@ export default function CalendarioPage() {
             <button
               type="button"
               onClick={() => setView('day')}
-              className={`px-3 py-1.5 text-sm border-l ${
-                view === 'day' ? 'bg-zinc-200 dark:bg-zinc-800' : ''
+              className={`px-3 py-1.5 text-sm border-l transition-colors ${
+                view === 'day' ? 'bg-brand text-brand-foreground' : 'hover:bg-muted'
               }`}
             >
               Dia
@@ -119,7 +119,7 @@ export default function CalendarioPage() {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {STATUSES.map((s) => (
-              <div key={s} className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
+              <div key={s} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className={`size-2.5 rounded-full ${STATUS_DOT[s]}`} />
                 {STATUS_LABEL[s]}
               </div>
@@ -130,7 +130,7 @@ export default function CalendarioPage() {
 
       <div className="flex-1 min-h-0">
         {isLoading ? (
-          <div className="text-sm text-zinc-500">Carregando…</div>
+          <div className="text-sm text-muted-foreground">Carregando…</div>
         ) : (
           <CalendarGrid view={view} cursor={cursor} events={data} onEventClick={setSelected} />
         )}

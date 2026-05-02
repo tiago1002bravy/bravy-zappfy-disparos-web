@@ -66,7 +66,7 @@ function Countdown({ target }: { target: string }) {
     return () => clearInterval(id);
   }, []);
   const ms = new Date(target).getTime() - Date.now();
-  if (ms <= 0) return <span className="text-xs text-zinc-400">disparando…</span>;
+  if (ms <= 0) return <span className="text-xs text-muted-foreground">disparando…</span>;
   const totalSec = Math.floor(ms / 1000);
   const d = Math.floor(totalSec / 86400);
   const h = Math.floor((totalSec % 86400) / 3600);
@@ -78,7 +78,7 @@ function Countdown({ target }: { target: string }) {
   else label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   const urgent = ms < 60_000;
   return (
-    <span className={`text-xs font-mono tabular-nums ${urgent ? 'text-orange-500' : 'text-zinc-500'}`}>
+    <span className={`text-xs font-mono tabular-nums ${urgent ? 'text-orange-500' : 'text-muted-foreground'}`}>
       {label}
     </span>
   );
@@ -402,7 +402,7 @@ export default function MensagensPage() {
                         <Countdown target={nextOnceSchedule(m.schedules)!} />
                       </div>
                     )}
-                    <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                    <div className="flex items-center gap-0.5 rounded-md border border-border bg-background/50">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -412,7 +412,7 @@ export default function MensagensPage() {
                       >
                         <Pencil className="size-4" />
                       </Button>
-                      <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                      <div className="h-5 w-px bg-border" />
                       <Button
                         variant="ghost"
                         size="icon"
@@ -422,7 +422,7 @@ export default function MensagensPage() {
                       >
                         <Send className="size-4" />
                       </Button>
-                      <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                      <div className="h-5 w-px bg-border" />
                       <Button
                         variant="ghost"
                         size="icon"
@@ -434,7 +434,7 @@ export default function MensagensPage() {
                       </Button>
                       {m.schedules.length > 0 && (
                         <>
-                          <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                          <div className="h-5 w-px bg-border" />
                           <Button
                             variant="ghost"
                             size="icon"
@@ -483,10 +483,10 @@ export default function MensagensPage() {
                       key={l.id}
                       type="button"
                       onClick={() => toggleSendList(l.id)}
-                      className={`px-3 py-1 rounded-full text-xs border-2 flex items-center gap-2 ${sendLists.includes(l.id) ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-zinc-200 dark:border-zinc-700'}`}
+                      className={`px-3 py-1 rounded-full text-xs border-2 flex items-center gap-2 transition-colors ${sendLists.includes(l.id) ? 'border-brand bg-brand-soft text-foreground' : 'border-border'}`}
                     >
                       <span className="size-2 rounded-full" style={{ background: l.color ?? '#ccc' }} />
-                      {l.name} <span className="text-zinc-500">({l._count.memberships})</span>
+                      {l.name} <span className="text-muted-foreground">({l._count.memberships})</span>
                     </button>
                   ))}
                 </div>
@@ -496,13 +496,13 @@ export default function MensagensPage() {
               <Label className="mb-2 block">Grupos individuais ({sendGroups.length} selecionados)</Label>
               <div className="border rounded max-h-48 overflow-auto divide-y">
                 {groups.map((g) => (
-                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer transition-colors">
                     <Checkbox
                       checked={sendGroups.includes(g.remoteId)}
                       onCheckedChange={() => toggleSendGroup(g.remoteId)}
                     />
                     <span className="flex-1 text-sm">{g.name}</span>
-                    <span className="text-xs text-zinc-500">{g.instanceName}</span>
+                    <span className="text-xs text-muted-foreground">{g.instanceName}</span>
                   </label>
                 ))}
               </div>
@@ -540,10 +540,10 @@ export default function MensagensPage() {
                       key={l.id}
                       type="button"
                       onClick={() => toggleSendList(l.id)}
-                      className={`px-3 py-1 rounded-full text-xs border-2 flex items-center gap-2 ${sendLists.includes(l.id) ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-zinc-200 dark:border-zinc-700'}`}
+                      className={`px-3 py-1 rounded-full text-xs border-2 flex items-center gap-2 transition-colors ${sendLists.includes(l.id) ? 'border-brand bg-brand-soft text-foreground' : 'border-border'}`}
                     >
                       <span className="size-2 rounded-full" style={{ background: l.color ?? '#ccc' }} />
-                      {l.name} <span className="text-zinc-500">({l._count.memberships})</span>
+                      {l.name} <span className="text-muted-foreground">({l._count.memberships})</span>
                     </button>
                   ))}
                 </div>
@@ -554,7 +554,7 @@ export default function MensagensPage() {
               <Label className="mb-2 block">Grupos individuais ({sendGroups.length})</Label>
               <div className="border rounded max-h-32 overflow-auto divide-y">
                 {groups.map((g) => (
-                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer transition-colors">
                     <Checkbox checked={sendGroups.includes(g.remoteId)} onCheckedChange={() => toggleSendGroup(g.remoteId)} />
                     <span className="flex-1 text-sm">{g.name}</span>
                   </label>
@@ -570,7 +570,7 @@ export default function MensagensPage() {
                     key={t}
                     type="button"
                     onClick={() => setScheduleType(t)}
-                    className={`px-3 py-1 rounded text-xs border-2 ${scheduleType === t ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-zinc-200 dark:border-zinc-700'}`}
+                    className={`px-3 py-1 rounded text-xs border-2 transition-colors ${scheduleType === t ? 'border-brand bg-brand-soft text-foreground' : 'border-border'}`}
                   >
                     {t === 'ONCE' ? 'Uma vez' : t === 'DAILY' ? 'Diária' : t === 'WEEKLY' ? 'Semanal' : 'Cron'}
                   </button>
@@ -605,7 +605,7 @@ export default function MensagensPage() {
                       key={idx}
                       type="button"
                       onClick={() => toggleScheduleWeekday(idx)}
-                      className={`px-3 py-1 rounded text-xs border ${scheduleWeekdays.includes(idx) ? 'bg-blue-500 text-white border-blue-500' : ''}`}
+                      className={`px-3 py-1 rounded text-xs border transition-colors ${scheduleWeekdays.includes(idx) ? 'bg-brand text-brand-foreground border-brand' : 'border-border hover:bg-muted'}`}
                     >
                       {label}
                     </button>
@@ -652,7 +652,7 @@ export default function MensagensPage() {
               <div key={s.id} className="flex items-center justify-between p-3 rounded border">
                 <div className="text-sm">
                   <div className="font-medium">{s.type}</div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-muted-foreground">
                     {s.cron ?? new Date(s.startAt).toLocaleString('pt-BR')} · {s.status}
                   </div>
                 </div>
@@ -668,7 +668,7 @@ export default function MensagensPage() {
               </div>
             ))}
             {cancelMsg && cancelMsg.schedules.length === 0 && (
-              <div className="text-sm text-zinc-500 text-center py-4">
+              <div className="text-sm text-muted-foreground text-center py-4">
                 Nenhum agendamento ativo.
               </div>
             )}
@@ -806,7 +806,7 @@ export default function MensagensPage() {
                         <div className="text-xs text-muted-foreground font-mono truncate">{a.media.mime}</div>
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0">
-                        <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                        <div className="flex items-center gap-0.5 rounded-md border border-border bg-background/50">
                           <Button
                             type="button"
                             variant="ghost"
@@ -818,7 +818,7 @@ export default function MensagensPage() {
                           >
                             ↑
                           </Button>
-                          <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-600" />
+                          <div className="h-4 w-px bg-border" />
                           <Button
                             type="button"
                             variant="ghost"

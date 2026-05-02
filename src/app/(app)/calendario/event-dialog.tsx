@@ -29,9 +29,9 @@ export function EventDialog({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {event.kind === 'group-update' ? (
-                  <Users className="size-4 text-zinc-500" />
+                  <Users className="size-4 text-muted-foreground" />
                 ) : (
-                  <MessageSquare className="size-4 text-zinc-500" />
+                  <MessageSquare className="size-4 text-muted-foreground" />
                 )}
                 {event.title}
               </DialogTitle>
@@ -50,16 +50,16 @@ export function EventDialog({
                 <Badge variant="outline">{event.scheduleStatus}</Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-zinc-600 dark:text-zinc-400">
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-zinc-400">Grupos</div>
-                  <div className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Grupos</div>
+                  <div className="text-base font-medium text-foreground">
                     {event.groupCount}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-zinc-400">Tipo</div>
-                  <div className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Tipo</div>
+                  <div className="text-base font-medium text-foreground">
                     {event.kind === 'group-update' ? 'Atualizar grupo' : 'Mensagem'}
                   </div>
                 </div>
@@ -67,31 +67,31 @@ export function EventDialog({
 
               {event.executionStats && (
                 <div className="rounded border p-3">
-                  <div className="text-xs uppercase tracking-wide text-zinc-400 mb-2">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
                     Execuções
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div>
                       <div className="text-lg font-semibold">{event.executionStats.total}</div>
-                      <div className="text-xs text-zinc-500">Total</div>
+                      <div className="text-xs text-muted-foreground">Total</div>
                     </div>
                     <div>
-                      <div className="text-lg font-semibold text-emerald-600">
+                      <div className="text-lg font-semibold text-brand">
                         {event.executionStats.success}
                       </div>
-                      <div className="text-xs text-zinc-500">Sucesso</div>
+                      <div className="text-xs text-muted-foreground">Sucesso</div>
                     </div>
                     <div>
-                      <div className="text-lg font-semibold text-red-600">
+                      <div className="text-lg font-semibold text-red-600 dark:text-red-400">
                         {event.executionStats.failed}
                       </div>
-                      <div className="text-xs text-zinc-500">Falhou</div>
+                      <div className="text-xs text-muted-foreground">Falhou</div>
                     </div>
                     <div>
-                      <div className="text-lg font-semibold text-amber-600">
+                      <div className="text-lg font-semibold text-amber-600 dark:text-amber-400">
                         {event.executionStats.skipped}
                       </div>
-                      <div className="text-xs text-zinc-500">Pulado</div>
+                      <div className="text-xs text-muted-foreground">Pulado</div>
                     </div>
                   </div>
                 </div>

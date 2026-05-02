@@ -213,19 +213,19 @@ export default function GruposPage() {
                 placeholder="5521999999999&#10;5511988887777"
               />
               {(tenantDefaults?.defaultParticipants?.length ?? 0) > 0 ? (
-                <div className="rounded-md border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900 p-3 space-y-1">
-                  <div className="text-xs font-medium text-blue-900 dark:text-blue-200">
+                <div className="rounded-md border bg-brand-soft border-brand/30 p-3 space-y-1">
+                  <div className="text-xs font-medium text-foreground">
                     + {tenantDefaults?.defaultParticipants.length} participante(s) padrão da conta
                   </div>
-                  <div className="text-xs text-blue-700 dark:text-blue-300 font-mono">
+                  <div className="text-xs text-foreground/80 font-mono">
                     {tenantDefaults?.defaultParticipants.join(', ')}
                   </div>
-                  <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                  <div className="text-xs text-muted-foreground">
                     Configurados em Configurações → Participantes, serão mesclados automaticamente.
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   Apenas dígitos. DDI + DDD + número. Configure participantes padrão em
                   Configurações pra adicionar automaticamente em todo grupo criado.
                 </p>

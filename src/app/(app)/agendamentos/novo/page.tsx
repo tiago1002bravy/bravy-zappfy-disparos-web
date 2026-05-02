@@ -147,7 +147,7 @@ export default function NovoAgendamentoPage() {
     <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-semibold">Novo agendamento</h1>
-        <p className="text-sm text-zinc-500">Etapa {step} de 4</p>
+        <p className="text-sm text-muted-foreground">Etapa {step} de 4</p>
       </div>
 
       {step === 1 && (
@@ -192,11 +192,11 @@ export default function NovoAgendamentoPage() {
                       key={l.id}
                       type="button"
                       onClick={() => toggleList(l.id)}
-                      className={`px-3 py-1 rounded-full text-xs border-2 flex items-center gap-2 ${selectedLists.includes(l.id) ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-zinc-200 dark:border-zinc-700'}`}
+                      className={`px-3 py-1 rounded-full text-xs border-2 flex items-center gap-2 transition-colors ${selectedLists.includes(l.id) ? 'border-brand bg-brand-soft text-foreground' : 'border-border'}`}
                     >
                       <span className="size-2 rounded-full" style={{ background: l.color ?? '#ccc' }} />
                       {l.name}
-                      <span className="text-zinc-500">({l._count.memberships})</span>
+                      <span className="text-muted-foreground">({l._count.memberships})</span>
                     </button>
                   ))}
                 </div>
@@ -207,18 +207,18 @@ export default function NovoAgendamentoPage() {
               <Label className="mb-2 block">Grupos individuais ({selectedGroups.length} selecionados)</Label>
               <div className="border rounded max-h-64 overflow-auto divide-y">
                 {groups.length === 0 && (
-                  <div className="p-4 text-sm text-zinc-500">
+                  <div className="p-4 text-sm text-muted-foreground">
                     Nenhum grupo cadastrado. Sincronize na tela &quot;Grupos&quot; primeiro.
                   </div>
                 )}
                 {groups.map((g) => (
-                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 cursor-pointer">
+                  <label key={g.id} className="flex items-center gap-2 p-2 hover:bg-muted cursor-pointer transition-colors">
                     <Checkbox
                       checked={selectedGroups.includes(g.remoteId)}
                       onCheckedChange={() => toggleGroup(g.remoteId)}
                     />
                     <span className="flex-1 text-sm">{g.name}</span>
-                    <span className="text-xs text-zinc-500">{g.instanceName}</span>
+                    <span className="text-xs text-muted-foreground">{g.instanceName}</span>
                   </label>
                 ))}
               </div>
@@ -289,7 +289,7 @@ export default function NovoAgendamentoPage() {
                       key={idx}
                       type="button"
                       onClick={() => toggleWeekday(idx)}
-                      className={`px-3 py-1 rounded text-xs border ${weekdays.includes(idx) ? 'bg-blue-500 text-white border-blue-500' : ''}`}
+                      className={`px-3 py-1 rounded text-xs border transition-colors ${weekdays.includes(idx) ? 'bg-brand text-brand-foreground border-brand' : 'border-border hover:bg-muted'}`}
                     >
                       {label}
                     </button>
@@ -309,9 +309,9 @@ export default function NovoAgendamentoPage() {
 
             <div className="space-y-2">
               <Label>Próximas execuções</Label>
-              <div className="rounded-md border bg-zinc-50 dark:bg-zinc-900 p-3 text-xs space-y-1">
+              <div className="rounded-md border bg-muted/50 p-3 text-xs space-y-1">
                 {preview.length === 0 ? (
-                  <span className="text-zinc-500">Defina os campos acima</span>
+                  <span className="text-muted-foreground">Defina os campos acima</span>
                 ) : (
                   preview.map((p, i) => (
                     <div key={i}>{new Date(p).toLocaleString('pt-BR')}</div>

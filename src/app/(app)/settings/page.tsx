@@ -423,7 +423,7 @@ export default function SettingsPage() {
               >
                 {me?.hasInstanceToken ? (
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">
                       <CheckCircle2 className="size-3" />
                       Conectado
                     </span>
@@ -589,7 +589,7 @@ export default function SettingsPage() {
                                 u.role === 'ADMIN' &&
                                   'border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300',
                                 u.role === 'OPERATOR' &&
-                                  'border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300',
+                                  'border-border bg-muted text-muted-foreground',
                               )}
                             >
                               {u.role}
@@ -597,7 +597,7 @@ export default function SettingsPage() {
                           </TableCell>
                           <TableCell>
                             {u.hasInstanceToken ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
+                              <span className="inline-flex items-center gap-1 text-xs text-brand">
                                 <CheckCircle2 className="size-3" />
                                 Configurado
                               </span>
@@ -761,7 +761,7 @@ export default function SettingsPage() {
                     className={cn(
                       'rounded-lg border p-4 space-y-3',
                       r.status === 'PENDING' && 'border-orange-500/40 bg-orange-500/5',
-                      r.status === 'APPROVED' && 'border-emerald-500/30 bg-emerald-500/5 opacity-70',
+                      r.status === 'APPROVED' && 'border-brand/30 bg-brand/5 opacity-70',
                       r.status === 'REJECTED' && 'border-red-500/30 bg-red-500/5 opacity-70',
                     )}
                   >
@@ -776,7 +776,7 @@ export default function SettingsPage() {
                               r.status === 'PENDING' &&
                                 'border-orange-500/40 text-orange-700 dark:text-orange-300 bg-orange-500/10',
                               r.status === 'APPROVED' &&
-                                'border-emerald-500/40 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10',
+                                'border-brand/40 text-brand bg-brand/10',
                               r.status === 'REJECTED' &&
                                 'border-red-500/40 text-red-700 dark:text-red-300 bg-red-500/10',
                             )}

@@ -240,7 +240,7 @@ export default function GroupUpdatesPage() {
                       key={m.id}
                       type="button"
                       onClick={() => setNewPictureMediaId(m.id)}
-                      className={`rounded border-2 ${newPictureMediaId === m.id ? 'border-blue-500' : 'border-transparent'}`}
+                      className={`rounded border-2 transition-colors ${newPictureMediaId === m.id ? 'border-brand ring-2 ring-brand/20' : 'border-transparent'}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={resolveMediaUrl(m.thumbUrl ?? m.url)} alt="" className="w-full h-16 object-cover rounded" />

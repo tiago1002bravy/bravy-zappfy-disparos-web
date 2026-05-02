@@ -33,7 +33,7 @@ function Countdown({ target }: { target: string }) {
     return () => clearInterval(id);
   }, []);
   const ms = new Date(target).getTime() - Date.now();
-  if (ms <= 0) return <span className="text-xs text-zinc-400">disparando…</span>;
+  if (ms <= 0) return <span className="text-xs text-muted-foreground">disparando…</span>;
   const totalSec = Math.floor(ms / 1000);
   const d = Math.floor(totalSec / 86400);
   const h = Math.floor((totalSec % 86400) / 3600);
@@ -45,7 +45,7 @@ function Countdown({ target }: { target: string }) {
   else label = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   const urgent = ms < 60_000;
   return (
-    <span className={`text-xs font-mono tabular-nums ${urgent ? 'text-orange-500' : 'text-zinc-500'}`}>
+    <span className={`text-xs font-mono tabular-nums ${urgent ? 'text-orange-500' : 'text-muted-foreground'}`}>
       {label}
     </span>
   );
@@ -100,7 +100,7 @@ const DISPLAY_STATUS_META: Record<DisplayStatus, { label: string; className: str
   concluido: {
     label: 'Concluído',
     className:
-      'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/50',
+      'bg-brand/15 text-brand border border-brand/40',
   },
   falhou: {
     label: 'Falhou',
@@ -120,12 +120,12 @@ const DISPLAY_STATUS_META: Record<DisplayStatus, { label: string; className: str
   cancelado: {
     label: 'Cancelado',
     className:
-      'bg-zinc-100 text-zinc-600 border border-zinc-300 dark:bg-zinc-800/60 dark:text-zinc-400 dark:border-zinc-700',
+      'bg-muted text-muted-foreground border border-border',
   },
   ativo: {
     label: 'Ativo',
     className:
-      'bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/50',
+      'bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/40',
   },
 };
 
@@ -317,8 +317,10 @@ export default function AgendamentosPage() {
                   key={r.id}
                   type="button"
                   onClick={() => setHistoryRange(r.id)}
-                  className={`px-3 py-1 text-xs ${
-                    historyRange === r.id ? 'bg-zinc-200 dark:bg-zinc-800' : ''
+                  className={`px-3 py-1 text-xs transition-colors ${
+                    historyRange === r.id
+                      ? 'bg-brand text-brand-foreground'
+                      : 'hover:bg-muted'
                   }`}
                 >
                   {r.label}
@@ -528,7 +530,7 @@ function SchedulesTable({
                 <TableCell className="text-right align-top py-4 tabular-nums">
                   {stats.total > 0 ? (
                     <span className="text-xs">
-                      <span className="text-emerald-600 dark:text-emerald-400">{stats.success}✓</span>
+                      <span className="text-brand">{stats.success}✓</span>
                       {stats.failed > 0 && (
                         <span className="ml-1 text-red-600 dark:text-red-400">{stats.failed}✗</span>
                       )}
@@ -550,7 +552,7 @@ function SchedulesTable({
                         <Countdown target={s.startAt} />
                       </div>
                     )}
-                    <div className="flex items-center gap-0.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-background/50">
+                    <div className="flex items-center gap-0.5 rounded-md border border-border bg-background/50">
                       {s.status === 'ACTIVE' && (
                         <Button
                           variant="ghost"
@@ -575,7 +577,7 @@ function SchedulesTable({
                       )}
                       {(s.status === 'ACTIVE' || s.status === 'PAUSED') && (
                         <>
-                          <div className="h-5 w-px bg-zinc-300 dark:bg-zinc-600" />
+                          <div className="h-5 w-px bg-border" />
                           <Button
                             variant="ghost"
                             size="icon"

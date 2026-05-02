@@ -64,18 +64,18 @@ export function InstanceCredentialsField({ value, onChange }: Props) {
 
   if (defaults?.hasInstance && value.useAccountDefault !== false) {
     return (
-      <div className="space-y-3 rounded-md border p-4 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900">
+      <div className="space-y-3 rounded-md border p-4 bg-brand-soft border-brand/30">
         <div className="text-sm font-medium flex items-center justify-between">
           <span>✓ Usando conexão padrão da conta</span>
           <button
             type="button"
             onClick={() => onChange({ instanceName: '', instanceToken: '', useAccountDefault: false })}
-            className="text-xs text-zinc-600 underline"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
           >
             usar outra
           </button>
         </div>
-        <div className="text-xs text-zinc-600">
+        <div className="text-xs text-muted-foreground">
           Instância: <code className="font-mono">{defaults.instanceName}</code>
         </div>
       </div>
@@ -92,7 +92,7 @@ export function InstanceCredentialsField({ value, onChange }: Props) {
             onClick={() =>
               onChange({ instanceName: defaults.instanceName ?? '', instanceToken: '', useAccountDefault: true })
             }
-            className="text-xs text-blue-600 underline"
+            className="text-xs text-brand hover:underline"
           >
             usar conexão padrão
           </button>

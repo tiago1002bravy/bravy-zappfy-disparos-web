@@ -76,28 +76,28 @@ function GroupCombobox({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-left hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+        className="flex h-10 w-full items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-sm text-left hover:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
       >
-        <span className={selected ? 'truncate' : 'truncate text-zinc-400'}>
+        <span className={selected ? 'truncate' : 'truncate text-muted-foreground'}>
           {selected ? selected.name : placeholder}
         </span>
-        <ChevronsUpDown className="size-4 shrink-0 text-zinc-500 ml-2" />
+        <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground ml-2" />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg">
-          <div className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2">
-            <Search className="size-4 text-zinc-400 shrink-0" />
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <Search className="size-4 text-muted-foreground shrink-0" />
             <input
               ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar grupo..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
           <ul className="max-h-72 overflow-auto py-1">
             {filtered.length === 0 && (
-              <li className="px-3 py-6 text-center text-xs text-zinc-500">
+              <li className="px-3 py-6 text-center text-xs text-muted-foreground">
                 Nenhum grupo encontrado.
               </li>
             )}
@@ -111,13 +111,13 @@ function GroupCombobox({
                       onChange(g.id);
                       setOpen(false);
                     }}
-                    className={`flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50 ${
-                      active ? 'bg-zinc-50' : ''
+                    className={`flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-muted transition-colors ${
+                      active ? 'bg-muted' : ''
                     }`}
                   >
                     <Check
                       className={`size-4 shrink-0 mt-0.5 ${
-                        active ? 'opacity-100 text-zinc-900' : 'opacity-0'
+                        active ? 'opacity-100 text-brand' : 'opacity-0'
                       }`}
                     />
                     <span className="break-words leading-snug">{g.name}</span>
@@ -213,7 +213,7 @@ export default function ShortlinksPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Shortlinks</h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted-foreground">
             Link fixo do grupo. Quando o invite mudar, atualize aqui — a URL pública continua a mesma.
           </p>
         </div>
@@ -240,7 +240,7 @@ export default function ShortlinksPage() {
           <TableBody>
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-zinc-500">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   Nenhum shortlink. Clique em &quot;Novo shortlink&quot;.
                 </TableCell>
               </TableRow>
@@ -249,18 +249,18 @@ export default function ShortlinksPage() {
               <TableRow key={s.id}>
                 <TableCell className="font-mono text-xs">{s.slug}</TableCell>
                 <TableCell className="max-w-xs truncate">{s.group.name}</TableCell>
-                <TableCell className="max-w-[240px] text-xs text-zinc-600">
+                <TableCell className="max-w-[240px] text-xs text-muted-foreground">
                   {s.notes ? (
                     <span className="block truncate" title={s.notes}>{s.notes}</span>
                   ) : (
-                    <span className="text-zinc-300">—</span>
+                    <span className="text-muted-foreground/50">—</span>
                   )}
                 </TableCell>
-                <TableCell className="font-mono text-xs text-zinc-600">
+                <TableCell className="font-mono text-xs text-muted-foreground">
                   {PUBLIC_BASE}/g/{s.slug}
                 </TableCell>
                 <TableCell className="text-right">{s.clicks}</TableCell>
-                <TableCell className="text-xs text-zinc-500">
+                <TableCell className="text-xs text-muted-foreground">
                   {s.lastRefreshedAt ? new Date(s.lastRefreshedAt).toLocaleString('pt-BR') : '-'}
                 </TableCell>
                 <TableCell>
@@ -306,7 +306,7 @@ export default function ShortlinksPage() {
             <div className="space-y-2">
               <Label>Slug (parte final da URL pública)</Label>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 font-mono">{PUBLIC_BASE}/g/</span>
+                <span className="text-xs text-muted-foreground font-mono">{PUBLIC_BASE}/g/</span>
                 <Input
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
@@ -321,7 +321,7 @@ export default function ShortlinksPage() {
                 onChange={(e) => setInviteUrl(e.target.value)}
                 placeholder="https://chat.whatsapp.com/XXXXXXXXXX"
               />
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Quando o admin do grupo revogar/trocar o link, é só vir aqui e colar o novo. Sua URL pública não muda.
               </p>
             </div>

@@ -122,9 +122,9 @@ export function CalendarGrid({
   const [clusterModal, setClusterModal] = useState<ClusterGroup | null>(null);
 
   return (
-    <div className="flex flex-col h-full rounded-md border bg-white dark:bg-zinc-950 overflow-hidden">
+    <div className="flex flex-col h-full rounded-md border bg-card overflow-hidden">
       <div
-        className="grid border-b bg-white dark:bg-zinc-950 shrink-0"
+        className="grid border-b bg-card shrink-0"
         style={{ gridTemplateColumns: `60px repeat(${cols}, 1fr)` }}
       >
         <div />
@@ -133,18 +133,18 @@ export function CalendarGrid({
           return (
             <div
               key={d.toISOString()}
-              className="px-3 py-2 border-l border-zinc-200 dark:border-zinc-800"
+              className="px-3 py-2 border-l border-border"
             >
               <div
                 className={`text-xs ${
-                  today ? 'text-violet-600 font-semibold' : 'text-zinc-500'
+                  today ? 'text-brand font-semibold' : 'text-muted-foreground'
                 }`}
               >
                 {format(d, 'EEEE', { locale: ptBR })}
               </div>
               <div
                 className={`text-sm ${
-                  today ? 'text-violet-600 font-semibold' : 'text-zinc-500'
+                  today ? 'text-brand font-semibold' : 'text-muted-foreground'
                 }`}
               >
                 {format(d, "d 'de' MMM", { locale: ptBR })}
@@ -167,7 +167,7 @@ export function CalendarGrid({
                 style={{ height: HOUR_PX }}
               >
                 <div
-                  className="absolute right-2 -translate-y-1/2 text-[11px] text-zinc-500 leading-none tabular-nums"
+                  className="absolute right-2 -translate-y-1/2 text-[11px] text-muted-foreground leading-none tabular-nums"
                   style={{ top: 0 }}
                 >
                   {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
@@ -228,11 +228,11 @@ function DayColumn({
   }, [events]);
 
   return (
-    <div className="relative border-l border-zinc-200 dark:border-zinc-800">
+    <div className="relative border-l border-border">
       {HOURS.map((h) => (
         <div
           key={h}
-          className="border-b border-zinc-100 dark:border-zinc-900"
+          className="border-b border-border/50"
           style={{ height: HOUR_PX }}
         />
       ))}
@@ -260,7 +260,7 @@ function DayColumn({
             key={e.id}
             type="button"
             onClick={() => onEventClick(e)}
-            className="absolute flex items-center gap-1.5 pr-1.5 overflow-hidden rounded-md bg-zinc-100 hover:bg-zinc-200 hover:z-20 hover:shadow-md hover:ring-2 hover:ring-zinc-300 dark:bg-zinc-800/70 dark:hover:bg-zinc-800 dark:hover:ring-zinc-600 text-left text-xs text-zinc-800 dark:text-zinc-100 transition-all"
+            className="absolute flex items-center gap-1.5 pr-1.5 overflow-hidden rounded-md bg-muted hover:bg-accent hover:z-20 hover:shadow-md hover:ring-2 hover:ring-brand/30 text-left text-xs text-foreground transition-all"
             style={{
               top,
               height: HALF_HOUR_PX - 2,
@@ -271,15 +271,15 @@ function DayColumn({
           >
             <div className={`h-full w-1 shrink-0 ${STATUS_BAR[e.status]}`} />
             {e.kind === 'group-update' ? (
-              <Users className="size-3 shrink-0 text-zinc-500" />
+              <Users className="size-3 shrink-0 text-muted-foreground" />
             ) : (
-              <MessageSquare className="size-3 shrink-0 text-zinc-500" />
+              <MessageSquare className="size-3 shrink-0 text-muted-foreground" />
             )}
             <span className="truncate font-medium leading-tight flex-1 min-w-0">
               {e.title}
             </span>
             {showTime && (
-              <span className="text-[10px] tabular-nums text-zinc-500 leading-tight shrink-0">
+              <span className="text-[10px] tabular-nums text-muted-foreground leading-tight shrink-0">
                 {format(dt, 'HH:mm')}
               </span>
             )}
@@ -306,7 +306,7 @@ function DayColumn({
             key={`cluster-${c.startMs}`}
             type="button"
             onClick={() => onClusterClick(c)}
-            className="absolute group flex overflow-hidden rounded-lg border bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:z-20 hover:shadow-lg hover:border-zinc-400 dark:hover:border-zinc-600 text-left text-zinc-800 dark:text-zinc-100 transition-all"
+            className="absolute group flex overflow-hidden rounded-lg border border-border bg-card hover:bg-muted hover:z-20 hover:shadow-lg hover:border-brand/40 text-left text-foreground transition-all"
             style={{
               top: top + 2,
               height,
@@ -322,7 +322,7 @@ function DayColumn({
               // Layout compacto: tudo numa linha só, sem pills (só dot+número)
               <div className="flex-1 min-w-0 px-3 flex items-center gap-3 text-xs">
                 <span className="font-bold tabular-nums shrink-0">{c.events.length}</span>
-                <span className="text-zinc-500 shrink-0">disparos</span>
+                <span className="text-muted-foreground shrink-0">disparos</span>
                 <div className="flex items-center gap-2 ml-auto shrink-0">
                   {Object.entries(statusCounts).map(([s, n]) => (
                     <span
@@ -334,28 +334,28 @@ function DayColumn({
                     </span>
                   ))}
                 </div>
-                <ChevronRight className="size-3.5 text-zinc-400 group-hover:text-zinc-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ChevronRight className="size-3.5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             ) : (
               // Layout expandido: número grande + divider + pills
               <div className="flex-1 min-w-0 px-3 py-2 flex items-center gap-3">
                 <div className="flex items-baseline gap-1.5 shrink-0">
                   <span className="text-2xl font-bold tabular-nums leading-none">{c.events.length}</span>
-                  <span className="text-xs text-zinc-500 leading-none">disparos</span>
+                  <span className="text-xs text-muted-foreground leading-none">disparos</span>
                 </div>
-                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700 shrink-0" />
+                <div className="h-8 w-px bg-border shrink-0" />
                 <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
                   {Object.entries(statusCounts).map(([s, n]) => (
                     <span
                       key={s}
-                      className="inline-flex items-center gap-1 text-[10px] tabular-nums px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800"
+                      className="inline-flex items-center gap-1 text-[10px] tabular-nums px-1.5 py-0.5 rounded bg-muted"
                     >
                       <span className={`size-1.5 rounded-full ${STATUS_DOT[s as CalendarEvent['status']]}`} />
                       <span className="font-semibold">{n}</span>
                     </span>
                   ))}
                 </div>
-                <ChevronRight className="size-4 text-zinc-400 group-hover:text-zinc-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ChevronRight className="size-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0" />
               </div>
             )}
           </button>
@@ -392,19 +392,19 @@ function ClusterDialog({
       <DialogContent className="max-w-2xl p-0 gap-0">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="text-lg flex items-center gap-2">
-            <Layers className="size-5 text-zinc-500" />
+            <Layers className="size-5 text-muted-foreground" />
             {cluster.events.length} disparos
-            <span className="text-sm font-normal text-zinc-500 tabular-nums ml-2">
+            <span className="text-sm font-normal text-muted-foreground tabular-nums ml-2">
               {format(startDt, 'HH:mm')}–{format(endDt, 'HH:mm')}
             </span>
           </DialogTitle>
         </DialogHeader>
-        <div className="px-6 py-3 border-b bg-zinc-50 dark:bg-zinc-900 flex items-center gap-4 flex-wrap">
+        <div className="px-6 py-3 border-b bg-muted/50 flex items-center gap-4 flex-wrap">
           {Object.entries(statusCounts).map(([s, n]) => (
-            <div key={s} className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300 tabular-nums">
+            <div key={s} className="flex items-center gap-1.5 text-xs text-foreground tabular-nums">
               <span className={`size-2.5 rounded-full ${STATUS_DOT[s as CalendarEvent['status']]}`} />
               <span className="font-medium">{n}</span>
-              <span className="text-zinc-500">{STATUS_LABEL[s as CalendarEvent['status']]}</span>
+              <span className="text-muted-foreground">{STATUS_LABEL[s as CalendarEvent['status']]}</span>
             </div>
           ))}
         </div>
@@ -416,19 +416,19 @@ function ClusterDialog({
                 key={e.id}
                 type="button"
                 onClick={() => onPickEvent(e)}
-                className="w-full flex items-center gap-3 px-6 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-left transition-colors"
+                className="w-full flex items-center gap-3 px-6 py-3 hover:bg-muted text-left transition-colors"
               >
                 <div className={`size-2.5 rounded-full shrink-0 ${STATUS_DOT[e.status]}`} />
-                <span className="text-xs font-mono tabular-nums text-zinc-500 w-12 shrink-0">
+                <span className="text-xs font-mono tabular-nums text-muted-foreground w-12 shrink-0">
                   {format(dt, 'HH:mm')}
                 </span>
                 {e.kind === 'group-update' ? (
-                  <Users className="size-4 text-zinc-500 shrink-0" />
+                  <Users className="size-4 text-muted-foreground shrink-0" />
                 ) : (
-                  <MessageSquare className="size-4 text-zinc-500 shrink-0" />
+                  <MessageSquare className="size-4 text-muted-foreground shrink-0" />
                 )}
                 <span className="text-sm font-medium truncate flex-1">{e.title}</span>
-                <span className="text-xs text-zinc-500 tabular-nums shrink-0">
+                <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                   {e.groupCount} grupo{e.groupCount === 1 ? '' : 's'}
                 </span>
               </button>

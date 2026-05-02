@@ -2,8 +2,20 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Users, MessageSquare, CalendarClock, Calendar, ImageIcon, Settings, LogOut, Tags, Link2 } from 'lucide-react';
+import {
+  Users,
+  MessageSquare,
+  CalendarClock,
+  Calendar,
+  ImageIcon,
+  Settings,
+  LogOut,
+  Tags,
+  Link2,
+  Zap,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const NAV_SECTIONS = [
   {
@@ -25,15 +37,11 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Manutenção',
-    items: [
-      { href: '/group-updates', label: 'Atualizar grupos', icon: Users },
-    ],
+    items: [{ href: '/group-updates', label: 'Atualizar grupos', icon: Users }],
   },
   {
     label: 'Sistema',
-    items: [
-      { href: '/settings', label: 'Settings', icon: Settings },
-    ],
+    items: [{ href: '/settings', label: 'Settings', icon: Settings }],
   },
 ];
 
@@ -61,15 +69,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-1">
-      <aside className="w-52 shrink-0 border-r bg-sidebar text-sidebar-foreground flex flex-col">
+      <aside className="w-56 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="px-5 py-5 border-b border-sidebar-border">
-          <div className="text-base font-semibold tracking-tight">Zappfy Disparos</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Painel de controle</div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-brand text-brand-foreground shadow-[0_0_20px_-4px_var(--brand)]">
+              <Zap className="size-4 fill-current" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold tracking-tight leading-none">Zappfy</div>
+              <div className="text-[11px] text-sidebar-foreground/60 mt-1">Disparos</div>
+            </div>
+          </div>
         </div>
         <nav className="flex-1 overflow-y-auto pl-2 pr-1 py-4 flex flex-col gap-5">
           {NAV_SECTIONS.map((section, sIdx) => (
             <div key={section.label} className="flex flex-col gap-1">
-              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
                 {section.label}
               </div>
               {section.items.map((n) => {
@@ -83,17 +98,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       'group relative flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-md text-sm transition-colors',
                       active
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+                        : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
                     )}
                   >
                     <span
                       aria-hidden
                       className={cn(
                         'absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full transition-colors',
-                        active ? 'bg-foreground' : 'bg-transparent',
+                        active ? 'bg-brand' : 'bg-transparent',
                       )}
                     />
-                    <Icon className={cn('size-4 shrink-0', active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground')} />
+                    <Icon
+                      className={cn(
+                        'size-4 shrink-0',
+                        active
+                          ? 'text-brand'
+                          : 'text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground',
+                      )}
+                    />
                     <span className="truncate">{n.label}</span>
                   </Link>
                 );
@@ -104,10 +126,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="border-t border-sidebar-border p-3">
+        <div className="border-t border-sidebar-border p-3 flex flex-col gap-1">
+          <ThemeToggle variant="sidebar" />
           <button
             onClick={logout}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
           >
             <LogOut className="size-4" />
             Sair

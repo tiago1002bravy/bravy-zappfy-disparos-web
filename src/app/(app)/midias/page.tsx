@@ -52,7 +52,7 @@ export default function MidiasPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Mídias</h1>
-          <p className="text-sm text-zinc-500">Imagens, vídeos, áudios e PDFs reutilizáveis</p>
+          <p className="text-sm text-muted-foreground">Imagens, vídeos, áudios e PDFs reutilizáveis</p>
         </div>
         <div>
           <input
@@ -84,11 +84,11 @@ export default function MidiasPage() {
                   className="w-full h-32 object-cover rounded"
                 />
               ) : (
-                <div className="w-full h-32 bg-zinc-100 dark:bg-zinc-800 rounded flex items-center justify-center text-xs">
+                <div className="w-full h-32 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
                   {m.mime}
                 </div>
               )}
-              <div className="text-xs text-zinc-500 truncate">{m.s3Key.split('/').pop()}</div>
+              <div className="text-xs text-muted-foreground truncate">{m.s3Key.split('/').pop()}</div>
               <div className="flex items-center justify-between text-xs">
                 <span>{(m.size / 1024).toFixed(0)} KB</span>
                 <Button variant="ghost" size="icon" onClick={() => remove.mutate(m.id)}>
@@ -99,7 +99,7 @@ export default function MidiasPage() {
           </Card>
         ))}
         {items.length === 0 && (
-          <div className="col-span-full text-center text-sm text-zinc-500 py-12">
+          <div className="col-span-full text-center text-sm text-muted-foreground py-12">
             Nenhuma mídia. Envie um arquivo pra começar.
           </div>
         )}

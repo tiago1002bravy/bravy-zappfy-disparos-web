@@ -22,9 +22,9 @@ interface Execution {
 }
 
 const COLOR: Record<string, string> = {
-  SUCCESS: 'bg-green-500',
-  FAILED: 'bg-red-500',
-  SKIPPED: 'bg-yellow-500',
+  SUCCESS: 'bg-brand text-brand-foreground',
+  FAILED: 'bg-red-500 text-white',
+  SKIPPED: 'bg-amber-400 text-foreground',
 };
 
 export default function ScheduleDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -45,7 +45,7 @@ export default function ScheduleDetailPage({ params }: { params: Promise<{ id: s
     <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-2xl font-semibold">{schedule.message.name}</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           {schedule.type} · {schedule.cron ?? new Date(schedule.startAt).toLocaleString('pt-BR')} ·{' '}
           <Badge>{schedule.status}</Badge>
         </p>
@@ -68,7 +68,7 @@ export default function ScheduleDetailPage({ params }: { params: Promise<{ id: s
             <TableBody>
               {executions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-500">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     Nenhuma execução ainda.
                   </TableCell>
                 </TableRow>
@@ -80,7 +80,7 @@ export default function ScheduleDetailPage({ params }: { params: Promise<{ id: s
                   <TableCell>
                     <Badge className={COLOR[e.status]}>{e.status}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-red-600">
+                  <TableCell className="text-xs text-red-600 dark:text-red-400">
                     <div className="line-clamp-2 max-w-md whitespace-pre-wrap" title={e.errorMessage ?? ''}>
                       {e.errorMessage}
                     </div>
