@@ -180,7 +180,7 @@ export default function ShortlinksPage() {
                     <Badge variant="outline">{s.strategy}</Badge>
                     {s.autoCreate && <Badge className="ml-1 bg-brand/15 text-brand border-brand/40">auto</Badge>}
                   </TableCell>
-                  <TableCell className="max-w-[200px] text-xs text-muted-foreground">
+                  <TableCell className="max-w-[26rem] text-xs text-muted-foreground">
                     {s.notes ? (
                       <span className="block truncate" title={s.notes}>{s.notes}</span>
                     ) : (
@@ -330,7 +330,7 @@ function CreateShortlinkDialog({
             <div className="space-y-2">
               <Label>Estratégia</Label>
               <Select value={strategy} onValueChange={(v) => setStrategy(v as Strategy)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.keys(STRATEGY_LABELS) as Strategy[]).map((k) => (
                     <SelectItem key={k} value={k}>{STRATEGY_LABELS[k]}</SelectItem>
@@ -379,7 +379,7 @@ function CreateShortlinkDialog({
                 <div className="space-y-1.5">
                   <Label className="text-xs">Instância (instanceName)</Label>
                   <Select value={autoCreateInstance} onValueChange={(v) => setAutoCreateInstance(v ?? '')}>
-                    <SelectTrigger><SelectValue placeholder="Escolha..." /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Escolha..." /></SelectTrigger>
                     <SelectContent>
                       {instances.map((i) => (
                         <SelectItem key={i} value={i}>{i}</SelectItem>
@@ -569,8 +569,8 @@ function DetailDialog({
                               {it.order + 1}
                             </TableCell>
                             <TableCell className="text-sm">
-                              <div className="font-medium truncate max-w-[200px]">{it.group.name}</div>
-                              <div className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
+                              <div className="font-medium truncate max-w-[26rem]">{it.group.name}</div>
+                              <div className="text-xs text-muted-foreground font-mono truncate max-w-[26rem]">
                                 {it.group.instanceName}
                               </div>
                             </TableCell>

@@ -51,6 +51,8 @@ interface Message {
   name: string;
   text: string | null;
   mentionAll: boolean;
+  pollChoices?: string[];
+  pollSelectableCount?: number | null;
   createdAt: string;
   medias: { id: string; order: number; kind: MediaKind; media: Media; url: string; thumbUrl: string | null }[];
   schedules: ScheduleSummary[];
@@ -101,6 +103,9 @@ export default function MensagensPage() {
   const [mentionAll, setMentionAll] = useState(true);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState<MediaKind | null>(null);
+  const [isPoll, setIsPoll] = useState(false);
+  const [pollChoices, setPollChoices] = useState<string[]>(['', '']);
+  const [pollSelectable, setPollSelectable] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingKindRef = useRef<MediaKind>('AUTO');
 
@@ -144,6 +149,9 @@ export default function MensagensPage() {
     setText('');
     setMentionAll(true);
     setAttachments([]);
+    setIsPoll(false);
+    setPollChoices(['', '']);
+    setPollSelectable(1);
   }
 
   function startNew() {
@@ -161,17 +169,36 @@ export default function MensagensPage() {
         .sort((a, b) => a.order - b.order)
         .map((mm) => ({ mediaId: mm.media.id, kind: mm.kind, media: mm.media })),
     );
+    const choices = m.pollChoices ?? [];
+    if (choices.length >= 2) {
+      setIsPoll(true);
+      setPollChoices(choices);
+      setPollSelectable(m.pollSelectableCount ?? 1);
+    } else {
+      setIsPoll(false);
+      setPollChoices(['', '']);
+      setPollSelectable(1);
+    }
     setOpen(true);
   }
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const cleanChoices = pollChoices.map((c) => c.trim()).filter((c) => c.length > 0);
+      const payload: Record<string, unknown> = {
         name,
         text: text || undefined,
         mentionAll,
-        medias: attachments.map((a, order) => ({ mediaId: a.mediaId, order, kind: a.kind })),
+        medias: isPoll ? [] : attachments.map((a, order) => ({ mediaId: a.mediaId, order, kind: a.kind })),
       };
+      if (isPoll) {
+        if (cleanChoices.length < 2) throw new Error('Enquete precisa de pelo menos 2 opções');
+        payload.pollChoices = cleanChoices;
+        payload.pollSelectableCount = pollSelectable;
+      } else {
+        payload.pollChoices = [];
+        payload.pollSelectableCount = null;
+      }
       if (editing) await api.patch(`/messages/${editing.id}`, payload);
       else await api.post('/messages', payload);
     },
@@ -181,7 +208,11 @@ export default function MensagensPage() {
       setOpen(false);
       reset();
     },
-    onError: () => toast.error('Falha ao salvar'),
+    onError: (e: unknown) => {
+      const m = (e as { response?: { data?: { message?: string } }; message?: string })?.response?.data
+        ?.message ?? (e as { message?: string })?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao salvar');
+    },
   });
 
   const remove = useMutation({
@@ -375,7 +406,14 @@ export default function MensagensPage() {
             {messages.map((m) => (
               <TableRow key={m.id} className="hover:bg-muted/30 transition-colors">
                 <TableCell className="font-medium align-top py-4">
-                  <div className="truncate max-w-[15rem]" title={m.name}>{m.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="truncate max-w-[15rem]" title={m.name}>{m.name}</div>
+                    {(m.pollChoices?.length ?? 0) >= 2 && (
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wide shrink-0">
+                        Enquete
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground align-top py-4 whitespace-normal">
                   <div
@@ -696,43 +734,148 @@ export default function MensagensPage() {
 
             <div className="border-t" />
 
-            {/* Conteúdo */}
+            {/* Tipo */}
             <section className="space-y-3">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Conteúdo</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</h3>
               </div>
-              <div className="space-y-2">
-                <Label>Texto da mensagem</Label>
-                <Textarea
-                  rows={6}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Digite o texto da mensagem (suporta *negrito*, _itálico_, ~tachado~)"
-                  className="resize-y"
-                />
-              </div>
-              <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/40">
-                <Checkbox
-                  id="mentionAll"
-                  checked={mentionAll}
-                  onCheckedChange={(v) => setMentionAll(v === true)}
-                  className="mt-0.5"
-                />
-                <div className="flex-1 space-y-1">
-                  <Label htmlFor="mentionAll" className="cursor-pointer font-medium">
-                    Mencionar todos do grupo (@todos)
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Notifica todo mundo do grupo, mesmo quem está com chat silenciado. Recomendado pra
-                    avisos importantes.
-                  </p>
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPoll(false)}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${!isPoll ? 'border-brand bg-brand-soft' : 'border-border hover:bg-muted/40'}`}
+                >
+                  <div className="text-sm font-medium">Texto + mídia</div>
+                  <div className="text-xs text-muted-foreground">Mensagem normal com anexos opcionais</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPoll(true)}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${isPoll ? 'border-brand bg-brand-soft' : 'border-border hover:bg-muted/40'}`}
+                >
+                  <div className="text-sm font-medium">Enquete</div>
+                  <div className="text-xs text-muted-foreground">Pergunta + opções de resposta</div>
+                </button>
               </div>
             </section>
 
             <div className="border-t" />
 
-            {/* Anexos */}
+            {/* Conteúdo */}
+            <section className="space-y-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {isPoll ? 'Pergunta da enquete' : 'Conteúdo'}
+                </h3>
+              </div>
+              <div className="space-y-2">
+                <Label>{isPoll ? 'Pergunta' : 'Texto da mensagem'}</Label>
+                <Textarea
+                  rows={isPoll ? 3 : 6}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={
+                    isPoll
+                      ? 'Ex: Qual horário fica melhor pra você?'
+                      : 'Digite o texto da mensagem (suporta *negrito*, _itálico_, ~tachado~)'
+                  }
+                  className="resize-y"
+                />
+              </div>
+              {!isPoll && (
+                <div className="flex items-start gap-3 rounded-md border p-3 bg-muted/40">
+                  <Checkbox
+                    id="mentionAll"
+                    checked={mentionAll}
+                    onCheckedChange={(v) => setMentionAll(v === true)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 space-y-1">
+                    <Label htmlFor="mentionAll" className="cursor-pointer font-medium">
+                      Mencionar todos do grupo (@todos)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Notifica todo mundo do grupo, mesmo quem está com chat silenciado. Recomendado pra
+                      avisos importantes.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {isPoll && (
+              <>
+                <div className="border-t" />
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Opções
+                    </h3>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {pollChoices.filter((c) => c.trim()).length} preenchida(s)
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {pollChoices.map((c, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-semibold text-muted-foreground w-6 text-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <Input
+                          value={c}
+                          onChange={(e) =>
+                            setPollChoices((prev) => prev.map((p, i) => (i === idx ? e.target.value : p)))
+                          }
+                          placeholder={`Opção ${idx + 1}`}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          disabled={pollChoices.length <= 2}
+                          onClick={() =>
+                            setPollChoices((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          title="Remover opção"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPollChoices((prev) => [...prev, ''])}
+                      disabled={pollChoices.length >= 12}
+                    >
+                      <Plus className="size-4 mr-1.5" />
+                      Adicionar opção
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quantas opções cada pessoa pode escolher</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={Math.max(1, pollChoices.filter((c) => c.trim()).length)}
+                      value={pollSelectable}
+                      onChange={(e) => setPollSelectable(Math.max(1, Number(e.target.value) || 1))}
+                      className="w-32"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      <code>1</code> = enquete de escolha única. Mais que 1 = múltipla escolha.
+                    </p>
+                  </div>
+                </section>
+              </>
+            )}
+
+            {!isPoll && <div className="border-t" />}
+
+            {/* Anexos (escondido em enquete) */}
+            {!isPoll && (
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Anexos</h3>
@@ -847,6 +990,7 @@ export default function MensagensPage() {
                 </div>
               )}
             </section>
+            )}
           </div>
           <div className="px-6 py-4 border-t bg-muted/20 flex items-center justify-center gap-2">
             <Button

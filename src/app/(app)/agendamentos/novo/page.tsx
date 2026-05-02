@@ -157,7 +157,7 @@ export default function NovoAgendamentoPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={messageId} onValueChange={(v) => setMessageId(v ?? '')}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione um template" />
               </SelectTrigger>
               <SelectContent>
@@ -249,7 +249,7 @@ export default function NovoAgendamentoPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={type} onValueChange={(v) => v && setType(v as typeof type)}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -192,7 +192,7 @@ export default function GroupUpdatesPage() {
             <div className="space-y-2">
               <Label>Grupo</Label>
               <Select value={groupRemoteId} onValueChange={(v) => setGroupRemoteId(v ?? '')}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Escolha o grupo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -208,7 +208,7 @@ export default function GroupUpdatesPage() {
             <div className="space-y-2">
               <Label>O que trocar</Label>
               <Select value={target} onValueChange={(v) => v && setTarget(v as typeof target)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,7 +253,7 @@ export default function GroupUpdatesPage() {
             <div className="space-y-2">
               <Label>Quando</Label>
               <Select value={type} onValueChange={(v) => v && setType(v as typeof type)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
