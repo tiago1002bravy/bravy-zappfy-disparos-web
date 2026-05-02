@@ -229,6 +229,7 @@ export default function ShortlinksPage() {
             <TableRow>
               <TableHead>Slug</TableHead>
               <TableHead>Grupo</TableHead>
+              <TableHead>Notas</TableHead>
               <TableHead>URL pública</TableHead>
               <TableHead className="text-right">Cliques</TableHead>
               <TableHead>Atualizado</TableHead>
@@ -239,7 +240,7 @@ export default function ShortlinksPage() {
           <TableBody>
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-zinc-500">
+                <TableCell colSpan={8} className="text-center text-zinc-500">
                   Nenhum shortlink. Clique em &quot;Novo shortlink&quot;.
                 </TableCell>
               </TableRow>
@@ -248,6 +249,13 @@ export default function ShortlinksPage() {
               <TableRow key={s.id}>
                 <TableCell className="font-mono text-xs">{s.slug}</TableCell>
                 <TableCell className="max-w-xs truncate">{s.group.name}</TableCell>
+                <TableCell className="max-w-[240px] text-xs text-zinc-600">
+                  {s.notes ? (
+                    <span className="block truncate" title={s.notes}>{s.notes}</span>
+                  ) : (
+                    <span className="text-zinc-300">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="font-mono text-xs text-zinc-600">
                   {PUBLIC_BASE}/g/{s.slug}
                 </TableCell>
