@@ -69,7 +69,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-1">
-      <aside className="w-56 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col">
+      <aside className="sticky top-0 h-screen w-56 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="px-5 py-5 border-b border-sidebar-border">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-brand text-brand-foreground shadow-[0_0_20px_-4px_var(--brand)]">
@@ -137,7 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto pl-3 pr-10 py-6">{children}</main>
+      <main className="flex-1 min-w-0 pl-3 pr-10 py-6">{children}</main>
     </div>
   );
 }
