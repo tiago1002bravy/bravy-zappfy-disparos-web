@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { endOfDay, startOfDay, subDays } from 'date-fns';
-import { api } from '@/lib/api';
+import { api, resolveMediaUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -420,23 +420,24 @@ function MediaPreview({ kind, mime, url }: { kind: MediaKind; mime: string; url:
   const isImage = kind === 'IMAGE' || mime.startsWith('image/');
   const isVideo = kind === 'VIDEO' || mime.startsWith('video/');
   const isAudio = kind === 'AUDIO' || kind === 'PTT' || mime.startsWith('audio/');
+  const resolved = resolveMediaUrl(url);
   if (isImage) {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+      <a href={resolved} target="_blank" rel="noopener noreferrer" className="block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="" className="w-full h-32 object-cover rounded-md border" />
+        <img src={resolved} alt="" className="w-full h-32 object-cover rounded-md border" />
       </a>
     );
   }
   if (isVideo) {
-    return <video src={url} controls className="w-full h-32 object-cover rounded-md border" />;
+    return <video src={resolved} controls className="w-full h-32 object-cover rounded-md border" />;
   }
   if (isAudio) {
-    return <audio src={url} controls className="w-full" />;
+    return <audio src={resolved} controls className="w-full" />;
   }
   return (
     <a
-      href={url}
+      href={resolved}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center justify-center h-32 rounded-md border bg-muted/30 text-xs text-muted-foreground hover:bg-muted/50"
