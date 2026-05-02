@@ -153,7 +153,7 @@ export default function GruposPage() {
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className="py-3">Nome</TableHead>
               <TableHead className="py-3">Instância</TableHead>
-              <TableHead className="text-right py-3">Participantes</TableHead>
+              <TableHead className="py-3">Participantes</TableHead>
               <TableHead className="py-3">Última sync</TableHead>
             </TableRow>
           </TableHeader>
@@ -178,7 +178,7 @@ export default function GruposPage() {
                 <TableCell className="py-4 text-muted-foreground text-xs font-mono truncate max-w-[14rem]" title={g.instanceName}>
                   {g.instanceName}
                 </TableCell>
-                <TableCell className="text-right py-4 tabular-nums">{g.participantsCount ?? '—'}</TableCell>
+                <TableCell className="py-4 tabular-nums">{g.participantsCount ?? '—'}</TableCell>
                 <TableCell className="py-4 tabular-nums text-sm">{new Date(g.syncedAt).toLocaleString('pt-BR')}</TableCell>
               </TableRow>
             ))}

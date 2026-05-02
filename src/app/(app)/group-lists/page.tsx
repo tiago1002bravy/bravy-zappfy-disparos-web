@@ -117,8 +117,8 @@ export default function GroupListsPage() {
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
               <TableHead className="py-3">Nome</TableHead>
-              <TableHead className="text-right py-3">Grupos</TableHead>
-              <TableHead className="w-32 text-right py-3 pr-4">Ações</TableHead>
+              <TableHead className="py-3">Grupos</TableHead>
+              <TableHead className="w-32 py-3">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -140,11 +140,11 @@ export default function GroupListsPage() {
                     <span className="font-medium">{l.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right py-4">
+                <TableCell className="py-4">
                   <Badge variant="secondary">{l._count.memberships}</Badge>
                 </TableCell>
-                <TableCell className="text-right py-3 pr-3">
-                  <div className="flex items-center justify-end gap-2">
+                <TableCell className="py-3 pr-3">
+                  <div className="flex items-center justify-center gap-2">
                     <div className="flex items-center gap-0.5 rounded-md border border-border bg-background/50">
                       <Button
                         variant="ghost"

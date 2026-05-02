@@ -135,7 +135,7 @@ export default function GroupUpdatesPage() {
               <TableHead className="py-3">Tipo</TableHead>
               <TableHead className="py-3">Início</TableHead>
               <TableHead className="py-3">Status</TableHead>
-              <TableHead className="w-20 text-right py-3 pr-4" />
+              <TableHead className="w-20 py-3" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -164,7 +164,7 @@ export default function GroupUpdatesPage() {
                 <TableCell className="align-top py-4">
                   <Badge variant="secondary">{g.status}</Badge>
                 </TableCell>
-                <TableCell className="text-right align-top py-3 pr-3">
+                <TableCell className="align-top py-3 pr-3">
                   <Button
                     variant="ghost"
                     size="icon"

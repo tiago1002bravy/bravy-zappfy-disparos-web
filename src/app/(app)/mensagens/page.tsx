@@ -361,7 +361,7 @@ export default function MensagensPage() {
               <TableHead className="py-3">Preview</TableHead>
               <TableHead className="w-20 text-center py-3">Mídias</TableHead>
               <TableHead className="w-28 py-3">Status</TableHead>
-              <TableHead className="w-56 text-right py-3 pr-4">Ações</TableHead>
+              <TableHead className="w-56 py-3">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -395,8 +395,8 @@ export default function MensagensPage() {
                     <span className="text-muted-foreground/40 text-sm">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right align-top py-3 pr-3">
-                  <div className="flex items-center justify-end gap-2">
+                <TableCell className="align-top py-3 pr-3">
+                  <div className="flex items-center justify-center gap-2">
                     {m.schedules.length > 0 && nextOnceSchedule(m.schedules) && (
                       <div className="hidden xl:flex items-center pr-1">
                         <Countdown target={nextOnceSchedule(m.schedules)!} />
@@ -848,7 +848,7 @@ export default function MensagensPage() {
               )}
             </section>
           </div>
-          <div className="px-6 py-4 border-t bg-muted/20 flex items-center justify-end gap-2">
+          <div className="px-6 py-4 border-t bg-muted/20 flex items-center justify-center gap-2">
             <Button
               variant="outline"
               type="button"

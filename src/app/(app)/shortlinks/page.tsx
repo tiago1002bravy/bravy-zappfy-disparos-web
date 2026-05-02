@@ -151,9 +151,9 @@ export default function ShortlinksPage() {
               <TableHead>Grupos</TableHead>
               <TableHead>Estratégia</TableHead>
               <TableHead>Notas</TableHead>
-              <TableHead className="text-right">Cliques</TableHead>
+              <TableHead>Cliques</TableHead>
               <TableHead>Ativo</TableHead>
-              <TableHead className="w-44 text-right">Ações</TableHead>
+              <TableHead className="w-44">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -187,12 +187,12 @@ export default function ShortlinksPage() {
                       <span className="text-muted-foreground/50">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{s.clicks}</TableCell>
+                  <TableCell className="tabular-nums">{s.clicks}</TableCell>
                   <TableCell>
                     <Switch checked={s.active} onCheckedChange={() => toggleActive.mutate(s)} />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+                  <TableCell>
+                    <div className="flex justify-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => copyLink(s)} title="Copiar link público">
                         <Copy className="size-4" />
                       </Button>
@@ -544,10 +544,10 @@ function DetailDialog({
                       <TableHead className="w-10">#</TableHead>
                       <TableHead>Grupo</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Cliques</TableHead>
-                      <TableHead className="text-right">Membros</TableHead>
-                      <TableHead className="text-right">Próx. check</TableHead>
-                      <TableHead className="w-44 text-right">Ações</TableHead>
+                      <TableHead>Cliques</TableHead>
+                      <TableHead>Membros</TableHead>
+                      <TableHead>Próx. check</TableHead>
+                      <TableHead className="w-44">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -579,15 +579,15 @@ function DetailDialog({
                                 {meta.label}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right text-xs tabular-nums">{it.clicks}</TableCell>
-                            <TableCell className="text-right text-xs tabular-nums">
+                            <TableCell className="text-xs tabular-nums">{it.clicks}</TableCell>
+                            <TableCell className="text-xs tabular-nums">
                               {it.participantsCount ?? '—'}
                             </TableCell>
-                            <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
+                            <TableCell className="text-xs tabular-nums text-muted-foreground">
                               {it.nextCheckAtClicks}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-0.5">
+                            <TableCell>
+                              <div className="flex justify-center gap-0.5">
                                 <Button
                                   variant="ghost"
                                   size="icon"

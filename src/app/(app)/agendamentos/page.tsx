@@ -478,10 +478,10 @@ function SchedulesTable({
             <TableHead className="py-3">Tipo</TableHead>
             <TableHead className="py-3">Início</TableHead>
             <TableHead className="py-3">Cron</TableHead>
-            <TableHead className="text-right py-3">Grupos</TableHead>
-            <TableHead className="text-right py-3">Execuções</TableHead>
+            <TableHead className="py-3">Grupos</TableHead>
+            <TableHead className="py-3">Execuções</TableHead>
             <TableHead className="py-3">Status</TableHead>
-            <TableHead className="w-44 text-right py-3 pr-4">Ações</TableHead>
+            <TableHead className="w-44 py-3">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -524,10 +524,10 @@ function SchedulesTable({
                 <TableCell className="align-top py-4 text-xs font-mono text-muted-foreground">
                   {s.cron ?? '—'}
                 </TableCell>
-                <TableCell className="text-right align-top py-4 tabular-nums">
+                <TableCell className="align-top py-4 tabular-nums">
                   {s.groupRemoteIds.length}
                 </TableCell>
-                <TableCell className="text-right align-top py-4 tabular-nums">
+                <TableCell className="align-top py-4 tabular-nums">
                   {stats.total > 0 ? (
                     <span className="text-xs">
                       <span className="text-brand">{stats.success}✓</span>
@@ -545,8 +545,8 @@ function SchedulesTable({
                 <TableCell className="align-top py-4">
                   <Badge className={meta.className}>{meta.label}</Badge>
                 </TableCell>
-                <TableCell className="text-right align-top py-3 pr-3">
-                  <div className="flex items-center justify-end gap-2">
+                <TableCell className="align-top py-3 pr-3">
+                  <div className="flex items-center justify-center gap-2">
                     {s.status === 'ACTIVE' && s.type === 'ONCE' && (
                       <div className="hidden xl:flex items-center pr-1">
                         <Countdown target={s.startAt} />
