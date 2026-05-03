@@ -167,7 +167,11 @@ export default function MensagensPage() {
     setAttachments(
       m.medias
         .sort((a, b) => a.order - b.order)
-        .map((mm) => ({ mediaId: mm.media.id, kind: mm.kind, media: mm.media })),
+        .map((mm) => ({
+          mediaId: mm.media.id,
+          kind: mm.kind,
+          media: { ...mm.media, url: mm.url, thumbUrl: mm.thumbUrl },
+        })),
     );
     const choices = m.pollChoices ?? [];
     if (choices.length >= 2) {
