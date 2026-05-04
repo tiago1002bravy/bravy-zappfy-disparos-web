@@ -501,7 +501,7 @@ export default function SettingsPage() {
 
               <FormRow
                 label="Nome da instância"
-                helper="ID único da sua sessão Uazapi (geralmente um UUID)."
+                helper="ID único da sua sessão Zappfy (geralmente um UUID)."
               >
                 <Input
                   value={myInstanceName}
@@ -516,7 +516,7 @@ export default function SettingsPage() {
                 helper={
                   me?.hasInstanceToken
                     ? 'Deixe em branco pra manter o token atual. Cole um novo pra substituir.'
-                    : 'Cole o token raw da Uazapi do seu número. Será criptografado.'
+                    : 'Cole o token raw da Zappfy do seu número. Será criptografado.'
                 }
               >
                 <Input
@@ -524,7 +524,7 @@ export default function SettingsPage() {
                   value={myInstanceToken}
                   onChange={(e) => setMyInstanceToken(e.target.value)}
                   placeholder={
-                    me?.hasInstanceToken ? '•••••••• (manter atual)' : 'cole o token Uazapi'
+                    me?.hasInstanceToken ? '•••••••• (manter atual)' : 'cole o token Zappfy'
                   }
                   className="font-mono"
                 />

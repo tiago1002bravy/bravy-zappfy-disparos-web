@@ -85,7 +85,7 @@ export function InstanceCredentialsField({ value, onChange }: Props) {
   return (
     <div className="space-y-3 rounded-md border p-4 bg-zinc-50 dark:bg-zinc-900">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">Instância Uazapi</div>
+        <div className="text-sm font-medium">Instância Zappfy</div>
         {defaults?.hasInstance && (
           <button
             type="button"
@@ -114,7 +114,7 @@ export function InstanceCredentialsField({ value, onChange }: Props) {
           type="password"
           value={value.instanceToken}
           onChange={(e) => update({ ...value, instanceToken: e.target.value, useAccountDefault: false })}
-          placeholder="cole o token Uazapi"
+          placeholder="cole o token Zappfy"
         />
       </div>
       <div className="flex items-center gap-2">

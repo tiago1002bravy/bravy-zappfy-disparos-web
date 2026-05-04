@@ -44,7 +44,7 @@ import {
 import { cn } from '@/lib/utils';
 
 type Strategy = 'SEQUENTIAL' | 'ROUND_ROBIN' | 'RANDOM';
-type CapacitySource = 'UAZAPI' | 'CLICK_COUNT';
+type CapacitySource = 'ZAPPFY' | 'CLICK_COUNT';
 type ItemStatus = 'ACTIVE' | 'FULL' | 'INVALID' | 'DISABLED';
 
 interface Group { id: string; name: string; instanceName: string }
@@ -364,7 +364,7 @@ function CreateShortlinkDialog({
                 max={1024}
               />
               <p className="text-xs text-muted-foreground">
-                Cliques antes do primeiro recheck via Uazapi. Menor = mais consultas, mais preciso.
+                Cliques antes do primeiro recheck via Zappfy. Menor = mais consultas, mais preciso.
               </p>
             </div>
           </div>
@@ -611,7 +611,7 @@ function DetailDialog({
                                   size="icon"
                                   className="size-7"
                                   onClick={() => refresh.mutate(it.id)}
-                                  title="Atualizar invite via Uazapi"
+                                  title="Atualizar invite via Zappfy"
                                 >
                                   <RefreshCw className="size-3.5" />
                                 </Button>
