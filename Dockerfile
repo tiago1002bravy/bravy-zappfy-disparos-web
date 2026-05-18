@@ -1,5 +1,6 @@
 FROM node:22-alpine AS base
-RUN npm i -g pnpm@9.15.9
+ENV COREPACK_INTEGRITY_KEYS=0
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
 
 FROM base AS deps
