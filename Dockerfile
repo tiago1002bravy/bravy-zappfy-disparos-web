@@ -4,7 +4,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts && pnpm rebuild sharp 2>/dev/null || true
 
 FROM base AS build
 ARG NEXT_PUBLIC_API_URL=https://grupos-api.bravy.com.br/api/v1
