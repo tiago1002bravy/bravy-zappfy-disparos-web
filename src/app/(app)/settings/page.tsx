@@ -22,12 +22,17 @@ import {
   CheckCircle2,
   Copy,
   KeyRound,
+  Loader2,
   MessageCircle,
+  Pencil,
   Plus,
+  Power,
   ShieldCheck,
   Trash2,
   UserCog,
   Users,
+  Wifi,
+  WifiOff,
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -70,9 +75,9 @@ const SECTIONS: { id: Section; label: string; icon: typeof Building2; descriptio
   },
   {
     id: 'minha-conexao',
-    label: 'Minha conexão',
+    label: 'Instancias',
     icon: MessageCircle,
-    description: 'Conexão WhatsApp do usuário logado — obrigatória pra disparos.',
+    description: 'Pool de instancias WhatsApp com failover automatico.',
   },
   {
     id: 'usuarios',
@@ -107,6 +112,17 @@ const SUPERADMIN_SECTION: { id: Section; label: string; icon: typeof Building2; 
   icon: ShieldCheck,
   description: 'Aprovar ou rejeitar pedidos de novos workspaces (super-admin).',
 };
+
+interface Instance {
+  id: string;
+  label: string;
+  instanceName: string;
+  priority: number;
+  active: boolean;
+  lastFailedAt: string | null;
+  failureCount: number;
+  createdAt: string;
+}
 
 interface UserListItem {
   id: string;
@@ -166,51 +182,95 @@ export default function SettingsPage() {
   const [defaultGroupLocked, setDefaultGroupLocked] = useState(true);
   const [defaultGroupAnnounce, setDefaultGroupAnnounce] = useState(true);
 
-  const [myInstanceName, setMyInstanceName] = useState('');
-  const [myInstanceToken, setMyInstanceToken] = useState('');
-
   const { data: me } = useQuery<Me>({
     queryKey: ['me'],
     queryFn: async () => (await api.get('/users/me')).data,
   });
 
-  useEffect(() => {
-    if (me) {
-      setMyInstanceName(me.instanceName ?? '');
-    }
-  }, [me]);
+  // ----- Instance pool -----
+  const { data: instances = [] } = useQuery<Instance[]>({
+    queryKey: ['instances'],
+    queryFn: async () => (await api.get('/instances')).data,
+  });
 
-  const updateMyConnection = useMutation({
+  const [newInstLabel, setNewInstLabel] = useState('');
+  const [newInstName, setNewInstName] = useState('');
+  const [newInstToken, setNewInstToken] = useState('');
+  const [newInstPriority, setNewInstPriority] = useState(0);
+  const [editingInst, setEditingInst] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editToken, setEditToken] = useState('');
+  const [editPriority, setEditPriority] = useState(0);
+  const [checkingInst, setCheckingInst] = useState<string | null>(null);
+
+  const createInstance = useMutation({
     mutationFn: async () => {
-      // Só envia campos que mudaram, pra evitar zerar acidentalmente quando o
-      // form ainda não carregou (`me` undefined → myInstanceName === '').
-      const payload: Record<string, unknown> = {};
-      const currentName = me?.instanceName ?? '';
-      if (myInstanceName !== currentName) {
-        payload.instanceName = myInstanceName || null;
-      }
-      if (myInstanceToken) payload.instanceToken = myInstanceToken;
-      if (Object.keys(payload).length === 0) {
-        toast.info('Nada pra atualizar');
-        return;
-      }
-      await api.patch('/users/me/connection', payload);
+      await api.post('/instances', {
+        label: newInstLabel,
+        instanceName: newInstName,
+        instanceToken: newInstToken,
+        priority: newInstPriority,
+      });
     },
     onSuccess: () => {
-      toast.success('Minha conexão salva');
-      setMyInstanceToken('');
-      qc.invalidateQueries({ queryKey: ['me'] });
+      toast.success('Instancia adicionada');
+      setNewInstLabel('');
+      setNewInstName('');
+      setNewInstToken('');
+      setNewInstPriority(0);
+      qc.invalidateQueries({ queryKey: ['instances'] });
+    },
+    onError: (err: unknown) => {
+      const m = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof m === 'string' ? m : 'Falha ao criar instancia');
     },
   });
 
-  const clearMyToken = useMutation({
-    mutationFn: async () =>
-      api.patch('/users/me/connection', { instanceName: null, instanceToken: null }),
+  const updateInstance = useMutation({
+    mutationFn: async (id: string) => {
+      const payload: Record<string, unknown> = { label: editLabel, priority: editPriority };
+      if (editToken) payload.instanceToken = editToken;
+      await api.patch(`/instances/${id}`, payload);
+    },
     onSuccess: () => {
-      toast.success('Conexão pessoal removida');
-      qc.invalidateQueries({ queryKey: ['me'] });
+      toast.success('Instancia atualizada');
+      setEditingInst(null);
+      setEditToken('');
+      qc.invalidateQueries({ queryKey: ['instances'] });
     },
   });
+
+  const toggleInstance = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      await api.patch(`/instances/${id}`, { active });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['instances'] });
+    },
+  });
+
+  const removeInstance = useMutation({
+    mutationFn: async (id: string) => api.delete(`/instances/${id}`),
+    onSuccess: () => {
+      toast.success('Instancia removida');
+      qc.invalidateQueries({ queryKey: ['instances'] });
+    },
+  });
+
+  const checkInstance = async (id: string) => {
+    setCheckingInst(id);
+    try {
+      const { data } = await api.post(`/instances/${id}/check`);
+      if (data.connected) {
+        toast.success(`Conectada (${data.groupCount} grupos)`);
+      } else {
+        toast.error(`Desconectada: ${data.error}`);
+      }
+    } catch {
+      toast.error('Falha ao verificar');
+    }
+    setCheckingInst(null);
+  };
 
   // ----- Multi-user (equipe da conta) -----
   const { data: users = [] } = useQuery<UserListItem[]>({
@@ -479,76 +539,227 @@ export default function SettingsPage() {
 
           {section === 'minha-conexao' && (
             <SectionPanel
-              title="Minha conexão WhatsApp"
-              description="Cada usuário precisa configurar a própria conexão. Disparos, criação de grupos e atualizações saem do seu número. Sem conexão, qualquer ação dá erro — isso é proposital, pra evitar que vários operadores compartilhem o mesmo número e levem ban."
-              footer={
-                <Button
-                  onClick={() => updateMyConnection.mutate()}
-                  disabled={updateMyConnection.isPending}
-                >
-                  {updateMyConnection.isPending ? 'Salvando…' : 'Salvar minha conexão'}
-                </Button>
-              }
+              title="Instancias WhatsApp"
+              description="Pool de instancias do workspace. Disparos usam a primeira instancia ativa. Se falhar, tenta a proxima automaticamente (failover). Ordene pela prioridade (menor = tenta primeiro)."
             >
               <FormRow
-                label="Status"
-                helper={
-                  me?.hasInstanceToken
-                    ? 'Conexão ativa. Disparos saem pelo seu número.'
-                    : 'Sem conexão configurada. Disparos vão falhar até você preencher abaixo.'
-                }
+                label="Adicionar instancia"
+                helper="Cadastre o nome (UUID da sessao Zappfy), token e uma label pra identificar."
               >
-                {me?.hasInstanceToken ? (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">
-                      <CheckCircle2 className="size-3" />
-                      Conectado
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => clearMyToken.mutate()}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      Remover minha conexão
-                    </button>
+                <form
+                  autoComplete="off"
+                  onSubmit={(e) => { e.preventDefault(); createInstance.mutate(); }}
+                  className="space-y-2"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Label (ex: Chip Marketing)"
+                      value={newInstLabel}
+                      onChange={(e) => setNewInstLabel(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <Input
+                      placeholder="Instance Name (UUID)"
+                      value={newInstName}
+                      onChange={(e) => setNewInstName(e.target.value)}
+                      className="font-mono text-xs"
+                      autoComplete="off"
+                    />
+                    <Input
+                      type="password"
+                      placeholder="Token Zappfy"
+                      value={newInstToken}
+                      onChange={(e) => setNewInstToken(e.target.value)}
+                      className="font-mono"
+                      autoComplete="new-password"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Prioridade (0 = primeira)"
+                      value={newInstPriority}
+                      onChange={(e) => setNewInstPriority(Number(e.target.value))}
+                      min={0}
+                    />
                   </div>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
-                    Não configurado
-                  </span>
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!newInstLabel || !newInstName || !newInstToken || createInstance.isPending}
+                    >
+                      <Plus className="size-4 mr-1.5" />
+                      Adicionar
+                    </Button>
+                  </div>
+                </form>
+              </FormRow>
+
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Instancias ({instances.length})
+                </Label>
+                <div className="rounded-md border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead>Label</TableHead>
+                        <TableHead>Instance Name</TableHead>
+                        <TableHead className="text-center">Prioridade</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-center">Falhas</TableHead>
+                        <TableHead className="w-32" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {instances.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            Nenhuma instancia cadastrada. Adicione acima.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {instances.map((inst) => (
+                        <TableRow key={inst.id}>
+                          <TableCell className="font-medium">
+                            {editingInst === inst.id ? (
+                              <Input
+                                value={editLabel}
+                                onChange={(e) => setEditLabel(e.target.value)}
+                                className="h-7 text-sm"
+                              />
+                            ) : (
+                              inst.label
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {inst.instanceName.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {editingInst === inst.id ? (
+                              <Input
+                                type="number"
+                                value={editPriority}
+                                onChange={(e) => setEditPriority(Number(e.target.value))}
+                                className="h-7 text-sm w-16 mx-auto text-center"
+                                min={0}
+                              />
+                            ) : (
+                              <span className="text-sm">{inst.priority}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {inst.active ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-brand">
+                                <Wifi className="size-3" /> Ativa
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                                <WifiOff className="size-3" /> Inativa
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={cn('text-xs', inst.failureCount > 0 && 'text-orange-600 font-medium')}>
+                              {inst.failureCount}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 justify-end">
+                              {editingInst === inst.id ? (
+                                <>
+                                  <Input
+                                    type="password"
+                                    placeholder="Novo token (opcional)"
+                                    value={editToken}
+                                    onChange={(e) => setEditToken(e.target.value)}
+                                    className="h-7 text-xs font-mono w-36"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    onClick={() => updateInstance.mutate(inst.id)}
+                                    title="Salvar"
+                                  >
+                                    <CheckCircle2 className="size-4 text-brand" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    onClick={() => setEditingInst(null)}
+                                    title="Cancelar"
+                                  >
+                                    <XCircle className="size-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    onClick={() => checkInstance(inst.id)}
+                                    disabled={checkingInst === inst.id}
+                                    title="Testar conexao"
+                                  >
+                                    {checkingInst === inst.id ? (
+                                      <Loader2 className="size-4 animate-spin" />
+                                    ) : (
+                                      <Wifi className="size-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    onClick={() => {
+                                      setEditingInst(inst.id);
+                                      setEditLabel(inst.label);
+                                      setEditPriority(inst.priority);
+                                      setEditToken('');
+                                    }}
+                                    title="Editar"
+                                  >
+                                    <Pencil className="size-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    onClick={() => toggleInstance.mutate({ id: inst.id, active: !inst.active })}
+                                    title={inst.active ? 'Desativar' : 'Reativar'}
+                                  >
+                                    <Power className={cn('size-4', inst.active ? 'text-brand' : 'text-red-500')} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-muted-foreground hover:text-destructive"
+                                    onClick={() => {
+                                      if (confirm(`Remover instancia "${inst.label}"?`)) {
+                                        removeInstance.mutate(inst.id);
+                                      }
+                                    }}
+                                    title="Remover"
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {instances.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Failover automatico: ao disparar, tenta a instancia de menor prioridade. Se falhar, tenta a proxima. Apos 10 falhas consecutivas, a instancia e desativada automaticamente.
+                  </p>
                 )}
-              </FormRow>
-
-              <FormRow
-                label="Nome da instância"
-                helper="ID único da sua sessão Zappfy (geralmente um UUID)."
-              >
-                <Input
-                  value={myInstanceName}
-                  onChange={(e) => setMyInstanceName(e.target.value)}
-                  placeholder="ex: 4f9d2a5f-ab56-4e43-8b13-1f932b2e0c22"
-                  className="font-mono text-xs"
-                />
-              </FormRow>
-
-              <FormRow
-                label="Token"
-                helper={
-                  me?.hasInstanceToken
-                    ? 'Deixe em branco pra manter o token atual. Cole um novo pra substituir.'
-                    : 'Cole o token raw da Zappfy do seu número. Será criptografado.'
-                }
-              >
-                <Input
-                  type="password"
-                  value={myInstanceToken}
-                  onChange={(e) => setMyInstanceToken(e.target.value)}
-                  placeholder={
-                    me?.hasInstanceToken ? '•••••••• (manter atual)' : 'cole o token Zappfy'
-                  }
-                  className="font-mono"
-                />
-              </FormRow>
+              </div>
             </SectionPanel>
           )}
 
