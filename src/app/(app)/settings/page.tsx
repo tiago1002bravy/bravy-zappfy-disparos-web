@@ -39,6 +39,7 @@ interface Tenant {
   timezone: string;
   failureWebhookUrl: string | null;
   defaultParticipants: string[];
+  autoJoinPhones: string[];
 }
 
 interface ApiKey {
@@ -157,6 +158,7 @@ export default function SettingsPage() {
   const [newKeyPlain, setNewKeyPlain] = useState<string | null>(null);
 
   const [defaultParticipants, setDefaultParticipants] = useState('');
+  const [autoJoinPhones, setAutoJoinPhones] = useState('');
 
   // Defaults de grupos
   const [defaultGroupAdmins, setDefaultGroupAdmins] = useState('');
@@ -292,6 +294,7 @@ export default function SettingsPage() {
       setTz(tenant.timezone);
       setWebhook(tenant.failureWebhookUrl ?? '');
       setDefaultParticipants((tenant.defaultParticipants ?? []).join('\n'));
+      setAutoJoinPhones((tenant.autoJoinPhones ?? []).join('\n'));
     }
   }, [tenant]);
 
@@ -344,6 +347,10 @@ export default function SettingsPage() {
         timezone: tz,
         failureWebhookUrl: webhook || null,
         defaultParticipants: defaultParticipants
+          .split(/[\s,;]+/)
+          .map((p) => p.trim().replace(/\D/g, ''))
+          .filter((p) => p.length >= 10 && p.length <= 15),
+        autoJoinPhones: autoJoinPhones
           .split(/[\s,;]+/)
           .map((p) => p.trim().replace(/\D/g, ''))
           .filter((p) => p.length >= 10 && p.length <= 15),
@@ -452,6 +459,19 @@ export default function SettingsPage() {
                   value={webhook}
                   onChange={(e) => setWebhook(e.target.value)}
                   placeholder="https://hooks.exemplo.com/zappfy"
+                />
+              </FormRow>
+
+              <FormRow
+                label="Auto-join em rotação"
+                helper="Números adicionados automaticamente no próximo grupo quando QUALQUER shortlink rotaciona (ex: você quer ser admitido sozinho no novo grupo da fila). Um por linha, formato E.164 sem +, ex: 5521980941184. Deixe vazio pra desativar."
+              >
+                <Textarea
+                  rows={3}
+                  value={autoJoinPhones}
+                  onChange={(e) => setAutoJoinPhones(e.target.value)}
+                  placeholder="5521980941184"
+                  className="font-mono text-xs"
                 />
               </FormRow>
             </SectionPanel>
