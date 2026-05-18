@@ -3,8 +3,8 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-lock.yaml .npmrc* ./
-RUN echo "ignore-build-scripts=true" >> .npmrc && pnpm install --frozen-lockfile
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 ARG NEXT_PUBLIC_API_URL=https://grupos-api.bravy.com.br/api/v1
