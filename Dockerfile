@@ -11,6 +11,7 @@ ARG NEXT_PUBLIC_API_URL=https://grupos-api.bravy.com.br/api/v1
 ARG NEXT_PUBLIC_PUBLIC_URL=https://grupos-api.bravy.com.br
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_PUBLIC_URL=$NEXT_PUBLIC_PUBLIC_URL
+ENV NEXT_SHARP_PATH=/app/node_modules/sharp
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
