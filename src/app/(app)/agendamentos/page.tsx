@@ -24,7 +24,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { AlertTriangle, ExternalLink, Pause, Play, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Pause, Play, Plus, Trash2, X, Zap } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 function Countdown({ target }: { target: string }) {
   const [, tick] = useState(0);
@@ -66,6 +70,9 @@ interface Schedule {
   cron: string | null;
   instanceName: string;
   groupRemoteIds: string[];
+  shortlinkRotationEnabled?: boolean;
+  shortlinkSlugs?: string[];
+  shortlinkPrevCount?: number;
   message: { id: string; name: string; text?: string | null };
   _count: { executions: number };
   executionStats?: ExecutionStats;
@@ -181,14 +188,26 @@ const HISTORY_RANGES = [
 
 type HistoryRangeId = (typeof HISTORY_RANGES)[number]['id'];
 
+interface ShortlinkLite {
+  id: string;
+  slug: string;
+  active: boolean;
+}
+
 export default function AgendamentosPage() {
   const qc = useQueryClient();
   const [historyRange, setHistoryRange] = useState<HistoryRangeId>('7d');
   const [previewSchedule, setPreviewSchedule] = useState<Schedule | null>(null);
+  const [rotationEditor, setRotationEditor] = useState<Schedule | null>(null);
   const { data = [] } = useQuery<Schedule[]>({
     queryKey: ['schedules'],
     queryFn: async () => (await api.get('/schedules')).data,
     refetchInterval: 5000,
+  });
+
+  const { data: shortlinks = [] } = useQuery<ShortlinkLite[]>({
+    queryKey: ['shortlinks-lite'],
+    queryFn: async () => (await api.get('/shortlinks')).data,
   });
 
   const action = useMutation({
@@ -198,6 +217,26 @@ export default function AgendamentosPage() {
     onSuccess: () => {
       toast.success('Atualizado');
       qc.invalidateQueries({ queryKey: ['schedules'] });
+    },
+  });
+
+  const updateRotation = useMutation({
+    mutationFn: async (params: {
+      id: string;
+      shortlinkRotationEnabled?: boolean;
+      shortlinkSlugs?: string[];
+      shortlinkPrevCount?: number;
+    }) => {
+      const { id, ...patch } = params;
+      await api.patch(`/schedules/${id}`, patch);
+    },
+    onSuccess: () => {
+      toast.success('Rotação atualizada');
+      qc.invalidateQueries({ queryKey: ['schedules'] });
+    },
+    onError: (e: unknown) => {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(typeof msg === 'string' ? msg : 'Falha ao atualizar rotação');
     },
   });
 
@@ -293,6 +332,10 @@ export default function AgendamentosPage() {
               if (confirm('Remover permanentemente?')) remove.mutate(id);
             }}
             onPreview={setPreviewSchedule}
+            onToggleRotation={(id, enabled) =>
+              updateRotation.mutate({ id, shortlinkRotationEnabled: enabled })
+            }
+            onEditRotation={setRotationEditor}
           />
         </TabsContent>
 
@@ -305,6 +348,10 @@ export default function AgendamentosPage() {
               if (confirm('Remover permanentemente?')) remove.mutate(id);
             }}
             onPreview={setPreviewSchedule}
+            onToggleRotation={(id, enabled) =>
+              updateRotation.mutate({ id, shortlinkRotationEnabled: enabled })
+            }
+            onEditRotation={setRotationEditor}
           />
         </TabsContent>
 
@@ -339,6 +386,10 @@ export default function AgendamentosPage() {
               if (confirm('Remover permanentemente?')) remove.mutate(id);
             }}
             onPreview={setPreviewSchedule}
+            onToggleRotation={(id, enabled) =>
+              updateRotation.mutate({ id, shortlinkRotationEnabled: enabled })
+            }
+            onEditRotation={setRotationEditor}
           />
         </TabsContent>
       </Tabs>
@@ -347,7 +398,118 @@ export default function AgendamentosPage() {
         schedule={previewSchedule}
         onClose={() => setPreviewSchedule(null)}
       />
+      <RotationEditorDialog
+        schedule={rotationEditor}
+        shortlinks={shortlinks}
+        onClose={() => setRotationEditor(null)}
+        onSave={(patch) => {
+          if (!rotationEditor) return;
+          updateRotation.mutate({ id: rotationEditor.id, ...patch });
+          setRotationEditor(null);
+        }}
+      />
     </div>
+  );
+}
+
+function RotationEditorDialog({
+  schedule,
+  shortlinks,
+  onClose,
+  onSave,
+}: {
+  schedule: Schedule | null;
+  shortlinks: ShortlinkLite[];
+  onClose: () => void;
+  onSave: (patch: { shortlinkSlugs: string[]; shortlinkPrevCount: number }) => void;
+}) {
+  const open = schedule !== null;
+  const [selected, setSelected] = useState<string[]>([]);
+  const [prevCount, setPrevCount] = useState<number>(2);
+
+  useEffect(() => {
+    if (schedule) {
+      setSelected(schedule.shortlinkSlugs ?? []);
+      setPrevCount(schedule.shortlinkPrevCount ?? 2);
+    }
+  }, [schedule]);
+
+  const toggleSlug = (slug: string) => {
+    setSelected((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rotação dinâmica via shortlink</DialogTitle>
+          <DialogDescription>
+            Quando ligado, o disparo vai pro grupo ATIVO de cada shortlink + N anteriores. Grupos antigos
+            não recebem mais.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              Shortlinks que disparam neste agendamento
+            </Label>
+            <div className="mt-2 space-y-2 border rounded-md p-3 max-h-48 overflow-y-auto">
+              {shortlinks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum shortlink criado ainda.</p>
+              ) : (
+                shortlinks.map((sl) => (
+                  <label key={sl.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={selected.includes(sl.slug)}
+                      onCheckedChange={() => toggleSlug(sl.slug)}
+                    />
+                    <span className="font-mono">{sl.slug}</span>
+                    {!sl.active && (
+                      <Badge variant="outline" className="text-[10px]">
+                        inativo
+                      </Badge>
+                    )}
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="prev-count" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Anteriores (FULL) por shortlink
+            </Label>
+            <Input
+              id="prev-count"
+              type="number"
+              min={0}
+              max={10}
+              value={prevCount}
+              onChange={(e) => setPrevCount(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
+              className="mt-1 w-24"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Ex.: 2 = ativo + 2 últimos FULL (3 grupos no total por slug).
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => onSave({ shortlinkSlugs: selected, shortlinkPrevCount: prevCount })}
+            disabled={selected.length === 0}
+          >
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -461,12 +623,16 @@ function SchedulesTable({
   onAction,
   onRemove,
   onPreview,
+  onToggleRotation,
+  onEditRotation,
 }: {
   rows: Schedule[];
   emptyText: string;
   onAction: (params: { id: string; action: 'pause' | 'resume' | 'cancel' }) => void;
   onRemove: (id: string) => void;
   onPreview: (s: Schedule) => void;
+  onToggleRotation: (id: string, enabled: boolean) => void;
+  onEditRotation: (s: Schedule) => void;
 }) {
   const nowMs = Date.now();
   return (
@@ -480,6 +646,7 @@ function SchedulesTable({
             <TableHead className="py-3">Início</TableHead>
             <TableHead className="py-3">Cron</TableHead>
             <TableHead className="py-3">Grupos</TableHead>
+            <TableHead className="py-3">Rotação</TableHead>
             <TableHead className="py-3">Execuções</TableHead>
             <TableHead className="py-3">Status</TableHead>
             <TableHead className="w-44 py-3">Ações</TableHead>
@@ -488,7 +655,7 @@ function SchedulesTable({
         <TableBody>
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
+              <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
                 {emptyText}
               </TableCell>
             </TableRow>
@@ -527,6 +694,29 @@ function SchedulesTable({
                 </TableCell>
                 <TableCell className="align-top py-4 tabular-nums">
                   {s.groupRemoteIds.length}
+                </TableCell>
+                <TableCell className="align-top py-4">
+                  <div className="flex flex-col items-start gap-1">
+                    <Switch
+                      checked={!!s.shortlinkRotationEnabled}
+                      onCheckedChange={(v) => onToggleRotation(s.id, v)}
+                      aria-label="Rotação dinâmica via shortlink"
+                    />
+                    {s.shortlinkRotationEnabled ? (
+                      <button
+                        type="button"
+                        onClick={() => onEditRotation(s)}
+                        className="text-[10px] text-muted-foreground hover:text-foreground font-mono truncate max-w-[10rem] text-left"
+                        title="Editar slugs"
+                      >
+                        {s.shortlinkSlugs?.length
+                          ? `${s.shortlinkSlugs.join(', ')} · +${s.shortlinkPrevCount ?? 2}`
+                          : 'sem slugs — clique pra configurar'}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">manual</span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="align-top py-4 tabular-nums">
                   {stats.total > 0 ? (
