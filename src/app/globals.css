@@ -23,6 +23,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-lead: var(--chart-lead);
+  --color-chart-buyer: var(--chart-buyer);
+  --color-chart-unknown: var(--chart-unknown);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -84,6 +87,12 @@
   --chart-4: oklch(0.42 0.10 160);
   --chart-5: oklch(0.30 0.06 165);
 
+  /* Par categórico leads × compradores — validado (CVD ΔE ~16, contraste ≥3:1 sobre card) */
+  --chart-lead: oklch(0.62 0.17 150);
+  --chart-buyer: oklch(0.46 0.13 158);
+  /* Disparos sem audiência conhecida (grupos) — neutro, papel de "Other" */
+  --chart-unknown: oklch(0.65 0.02 160);
+
   --radius: 0.625rem;
 
   --sidebar: oklch(0.18 0.015 160);
@@ -127,6 +136,10 @@
   --chart-3: oklch(0.55 0.14 155);
   --chart-4: oklch(0.42 0.10 160);
   --chart-5: oklch(0.32 0.07 165);
+
+  --chart-lead: oklch(0.66 0.17 150);
+  --chart-buyer: oklch(0.50 0.13 158);
+  --chart-unknown: oklch(0.55 0.02 160);
 
   --sidebar: oklch(0.10 0.012 160);
   --sidebar-foreground: oklch(0.92 0.01 150);

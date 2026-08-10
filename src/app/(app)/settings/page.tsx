@@ -14,6 +14,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -117,6 +124,11 @@ interface Instance {
   id: string;
   label: string;
   instanceName: string;
+  provider: 'UAZAPI' | 'CLOUD_API';
+  phoneNumberId: string | null;
+  wabaId: string | null;
+  displayPhoneNumber: string | null;
+  dailyCap: number | null;
   priority: number;
   active: boolean;
   lastFailedAt: string | null;
@@ -193,9 +205,14 @@ export default function SettingsPage() {
     queryFn: async () => (await api.get('/instances')).data,
   });
 
+  const [newInstProvider, setNewInstProvider] = useState<'UAZAPI' | 'CLOUD_API'>('UAZAPI');
   const [newInstLabel, setNewInstLabel] = useState('');
   const [newInstName, setNewInstName] = useState('');
   const [newInstToken, setNewInstToken] = useState('');
+  const [newInstPhoneNumberId, setNewInstPhoneNumberId] = useState('');
+  const [newInstWabaId, setNewInstWabaId] = useState('');
+  const [newInstDisplayPhone, setNewInstDisplayPhone] = useState('');
+  const [newInstDailyCap, setNewInstDailyCap] = useState('');
   const [newInstPriority, setNewInstPriority] = useState(0);
   const [editingInst, setEditingInst] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
@@ -205,18 +222,35 @@ export default function SettingsPage() {
 
   const createInstance = useMutation({
     mutationFn: async () => {
-      await api.post('/instances', {
-        label: newInstLabel,
-        instanceName: newInstName,
-        instanceToken: newInstToken,
-        priority: newInstPriority,
-      });
+      const payload: Record<string, unknown> =
+        newInstProvider === 'CLOUD_API'
+          ? {
+              provider: 'CLOUD_API',
+              label: newInstLabel,
+              phoneNumberId: newInstPhoneNumberId,
+              wabaId: newInstWabaId,
+              accessToken: newInstToken,
+              priority: newInstPriority,
+            }
+          : {
+              label: newInstLabel,
+              instanceName: newInstName,
+              instanceToken: newInstToken,
+              priority: newInstPriority,
+            };
+      if (newInstProvider === 'CLOUD_API' && newInstDisplayPhone) payload.displayPhoneNumber = newInstDisplayPhone;
+      if (newInstProvider === 'CLOUD_API' && newInstDailyCap) payload.dailyCap = Number(newInstDailyCap);
+      await api.post('/instances', payload);
     },
     onSuccess: () => {
       toast.success('Instancia adicionada');
       setNewInstLabel('');
       setNewInstName('');
       setNewInstToken('');
+      setNewInstPhoneNumberId('');
+      setNewInstWabaId('');
+      setNewInstDisplayPhone('');
+      setNewInstDailyCap('');
       setNewInstPriority(0);
       qc.invalidateQueries({ queryKey: ['instances'] });
     },
@@ -227,10 +261,10 @@ export default function SettingsPage() {
   });
 
   const updateInstance = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (inst: Instance) => {
       const payload: Record<string, unknown> = { label: editLabel, priority: editPriority };
-      if (editToken) payload.instanceToken = editToken;
-      await api.patch(`/instances/${id}`, payload);
+      if (editToken) payload[inst.provider === 'CLOUD_API' ? 'accessToken' : 'instanceToken'] = editToken;
+      await api.patch(`/instances/${inst.id}`, payload);
     },
     onSuccess: () => {
       toast.success('Instancia atualizada');
@@ -261,8 +295,13 @@ export default function SettingsPage() {
     setCheckingInst(id);
     try {
       const { data } = await api.post(`/instances/${id}/check`);
-      if (data.connected) {
+      if (data.connected && data.groupCount !== undefined) {
         toast.success(`Conectada (${data.groupCount} grupos)`);
+      } else if (data.connected) {
+        toast.success(
+          `Conectada${data.displayPhoneNumber ? ` (${data.displayPhoneNumber})` : ''}${data.qualityRating ? ` · qualidade ${data.qualityRating}` : ''}`,
+        );
+        qc.invalidateQueries({ queryKey: ['instances'] });
       } else {
         toast.error(`Desconectada: ${data.error}`);
       }
@@ -544,13 +583,25 @@ export default function SettingsPage() {
             >
               <FormRow
                 label="Adicionar instancia"
-                helper="Cadastre o nome (UUID da sessao Zappfy), token e uma label pra identificar."
+                helper="Uazapi: nome (UUID da sessao) + token. Cloud API oficial (Meta): Phone Number ID, WABA ID e access token permanente."
               >
                 <form
                   autoComplete="off"
                   onSubmit={(e) => { e.preventDefault(); createInstance.mutate(); }}
                   className="space-y-2"
                 >
+                  <Select
+                    value={newInstProvider}
+                    onValueChange={(v) => setNewInstProvider((v as 'UAZAPI' | 'CLOUD_API') ?? 'UAZAPI')}
+                  >
+                    <SelectTrigger className="w-full md:w-64">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UAZAPI">Uazapi (nao-oficial, grupos)</SelectItem>
+                      <SelectItem value="CLOUD_API">Cloud API oficial (Meta, 1:1)</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <Input
                       placeholder="Label (ex: Chip Marketing)"
@@ -558,21 +609,63 @@ export default function SettingsPage() {
                       onChange={(e) => setNewInstLabel(e.target.value)}
                       autoComplete="off"
                     />
-                    <Input
-                      placeholder="Instance Name (UUID)"
-                      value={newInstName}
-                      onChange={(e) => setNewInstName(e.target.value)}
-                      className="font-mono text-xs"
-                      autoComplete="off"
-                    />
-                    <Input
-                      type="password"
-                      placeholder="Token Zappfy"
-                      value={newInstToken}
-                      onChange={(e) => setNewInstToken(e.target.value)}
-                      className="font-mono"
-                      autoComplete="new-password"
-                    />
+                    {newInstProvider === 'UAZAPI' ? (
+                      <>
+                        <Input
+                          placeholder="Instance Name (UUID)"
+                          value={newInstName}
+                          onChange={(e) => setNewInstName(e.target.value)}
+                          className="font-mono text-xs"
+                          autoComplete="off"
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Token Zappfy"
+                          value={newInstToken}
+                          onChange={(e) => setNewInstToken(e.target.value)}
+                          className="font-mono"
+                          autoComplete="new-password"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Input
+                          placeholder="Phone Number ID"
+                          value={newInstPhoneNumberId}
+                          onChange={(e) => setNewInstPhoneNumberId(e.target.value)}
+                          className="font-mono text-xs"
+                          autoComplete="off"
+                        />
+                        <Input
+                          placeholder="WABA ID"
+                          value={newInstWabaId}
+                          onChange={(e) => setNewInstWabaId(e.target.value)}
+                          className="font-mono text-xs"
+                          autoComplete="off"
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Access token (System User)"
+                          value={newInstToken}
+                          onChange={(e) => setNewInstToken(e.target.value)}
+                          className="font-mono"
+                          autoComplete="new-password"
+                        />
+                        <Input
+                          placeholder="Numero exibido (opcional, ex: +55 11 9...)"
+                          value={newInstDisplayPhone}
+                          onChange={(e) => setNewInstDisplayPhone(e.target.value)}
+                          autoComplete="off"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Limite de envios/24h (opcional)"
+                          value={newInstDailyCap}
+                          onChange={(e) => setNewInstDailyCap(e.target.value)}
+                          min={1}
+                        />
+                      </>
+                    )}
                     <Input
                       type="number"
                       placeholder="Prioridade (0 = primeira)"
@@ -585,7 +678,12 @@ export default function SettingsPage() {
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={!newInstLabel || !newInstName || !newInstToken || createInstance.isPending}
+                      disabled={
+                        !newInstLabel ||
+                        !newInstToken ||
+                        (newInstProvider === 'UAZAPI' ? !newInstName : !newInstPhoneNumberId || !newInstWabaId) ||
+                        createInstance.isPending
+                      }
                     >
                       <Plus className="size-4 mr-1.5" />
                       Adicionar
@@ -603,7 +701,8 @@ export default function SettingsPage() {
                     <TableHeader>
                       <TableRow className="bg-muted/40 hover:bg-muted/40">
                         <TableHead>Label</TableHead>
-                        <TableHead>Instance Name</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead>Conexao</TableHead>
                         <TableHead className="text-center">Prioridade</TableHead>
                         <TableHead className="text-center">Status</TableHead>
                         <TableHead className="text-center">Falhas</TableHead>
@@ -613,7 +712,7 @@ export default function SettingsPage() {
                     <TableBody>
                       {instances.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                             Nenhuma instancia cadastrada. Adicione acima.
                           </TableCell>
                         </TableRow>
@@ -631,8 +730,22 @@ export default function SettingsPage() {
                               inst.label
                             )}
                           </TableCell>
+                          <TableCell>
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
+                                inst.provider === 'CLOUD_API'
+                                  ? 'border-sky-300 text-sky-700 dark:border-sky-800 dark:text-sky-400'
+                                  : 'border-border text-muted-foreground',
+                              )}
+                            >
+                              {inst.provider === 'CLOUD_API' ? 'Cloud API' : 'Uazapi'}
+                            </span>
+                          </TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">
-                            {inst.instanceName.slice(0, 8)}...
+                            {inst.provider === 'CLOUD_API' && inst.displayPhoneNumber
+                              ? inst.displayPhoneNumber
+                              : `${inst.instanceName.slice(0, 8)}...`}
                           </TableCell>
                           <TableCell className="text-center">
                             {editingInst === inst.id ? (
@@ -678,7 +791,7 @@ export default function SettingsPage() {
                                     variant="ghost"
                                     size="icon"
                                     className="size-7"
-                                    onClick={() => updateInstance.mutate(inst.id)}
+                                    onClick={() => updateInstance.mutate(inst)}
                                     title="Salvar"
                                   >
                                     <CheckCircle2 className="size-4 text-brand" />

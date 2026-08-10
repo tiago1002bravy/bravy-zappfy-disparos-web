@@ -7,7 +7,7 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const t = localStorage.getItem('zd_access_token');
-    router.replace(t ? '/grupos' : '/login');
+    router.replace(t ? '/dashboard' : '/login');
   }, [router]);
   return null;
 }

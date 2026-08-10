@@ -4,10 +4,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   Users,
+  BookUser,
   MessageSquare,
   CalendarClock,
   Calendar,
+  FileText,
   ImageIcon,
+  LayoutDashboard,
+  Send,
   Settings,
   LogOut,
   Tags,
@@ -19,12 +23,18 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 const NAV_SECTIONS = [
   {
+    label: 'Visão geral',
+    items: [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  },
+  {
     label: 'Cadastros',
     items: [
       { href: '/grupos', label: 'Grupos', icon: Users },
+      { href: '/contatos', label: 'Contatos', icon: BookUser },
       { href: '/group-lists', label: 'Listas de grupos', icon: Tags },
       { href: '/shortlinks', label: 'Shortlinks', icon: Link2 },
       { href: '/mensagens', label: 'Mensagens', icon: MessageSquare },
+      { href: '/templates-meta', label: 'Templates Meta', icon: FileText },
       { href: '/midias', label: 'Mídias', icon: ImageIcon },
     ],
   },
@@ -32,6 +42,7 @@ const NAV_SECTIONS = [
     label: 'Disparos',
     items: [
       { href: '/agendamentos', label: 'Agendamentos', icon: CalendarClock },
+      { href: '/disparos-contatos', label: 'Disparos 1:1', icon: Send },
       { href: '/calendario', label: 'Calendário', icon: Calendar },
     ],
   },
