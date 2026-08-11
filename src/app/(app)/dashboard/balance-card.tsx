@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Progress } from '@/components/ui/progress';
+import { Meter } from './meter';
 import { cn } from '@/lib/utils';
 
 export interface InstanceStat {
@@ -15,6 +15,7 @@ export interface InstanceStat {
   budget?: { cap: number; sentLast24h: number; balance: number };
   wallet?: {
     balanceUsd: number;
+    totalLoadedUsd: number;
     avgDailyCostUsd: number;
     daysLeft: number | null;
     lastTopUpAt: string;
@@ -24,6 +25,7 @@ export interface InstanceStat {
 
 const fmtUsd = (v: number) =>
   `US$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtInt = (v: number) => v.toLocaleString('pt-BR');
 
 function TopUpForm({ instanceId, onDone }: { instanceId: string; onDone: () => void }) {
   const [amount, setAmount] = useState('');
@@ -68,6 +70,13 @@ function TopUpForm({ instanceId, onDone }: { instanceId: string; onDone: () => v
       >
         {mutation.isPending ? 'Salvando…' : 'Salvar'}
       </button>
+      <button
+        type="button"
+        onClick={onDone}
+        className="text-xs text-muted-foreground hover:underline"
+      >
+        cancelar
+      </button>
       {mutation.isError && <span className="text-xs text-red-600">erro ao salvar</span>}
     </form>
   );
@@ -82,61 +91,91 @@ export function BalanceCard({ items }: { items: InstanceStat[] }) {
         <h3 className="text-sm font-medium">Saldo pra disparar</h3>
         <span className="text-[11px] text-muted-foreground">financeiro estimado + limite 24h</span>
       </div>
-      <div className="mt-3 space-y-4">
+      <div className="mt-3 space-y-5">
         {items.map((inst) => {
           const b = inst.budget;
           const w = inst.wallet;
-          const usedPct = b ? Math.min(((b.cap - b.balance) / b.cap) * 100, 100) : 0;
-          const lowCap = b ? b.balance / b.cap < 0.2 : false;
-          const lowMoney = w != null && w.daysLeft !== null && w.daysLeft < 2;
+          const freePct = b ? (b.balance / b.cap) * 100 : 0;
+          const lowCap = b ? freePct < 20 : false;
+          const lowMoney = w != null && (w.balanceUsd <= 0 || (w.daysLeft !== null && w.daysLeft < 2));
+          const moneyPct = w && w.totalLoadedUsd > 0 ? (Math.max(w.balanceUsd, 0) / w.totalLoadedUsd) * 100 : 0;
           return (
-            <div key={inst.id}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-sm font-medium">
+            <div key={inst.id} className="space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold">
                   {inst.label}
-                  {!inst.active && <span className="ml-1.5 text-[10px] text-muted-foreground">inativa</span>}
+                  {!inst.active && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">inativa</span>}
                 </span>
-                {w ? (
-                  <span
-                    className={cn(
-                      'text-sm font-semibold tabular-nums',
-                      lowMoney || w.balanceUsd <= 0 ? 'text-red-700 dark:text-red-400' : undefined,
-                    )}
-                  >
-                    {fmtUsd(w.balanceUsd)}
-                    <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                      {w.daysLeft !== null
-                        ? `~${w.daysLeft.toLocaleString('pt-BR')} dias no ritmo atual`
-                        : 'sem consumo em 7 dias'}
-                    </span>
+                {lowMoney && (
+                  <span className="inline-flex items-center rounded-md border border-red-300 bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-700 dark:border-red-800 dark:text-red-400">
+                    RECARREGAR {w!.balanceUsd <= 0 ? '— saldo esgotado' : '— menos de 2 dias'}
                   </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">saldo financeiro não registrado</span>
+                )}
+                {!lowMoney && lowCap && (
+                  <span className="inline-flex items-center rounded-md border border-red-300 px-2 py-0.5 text-[11px] font-bold text-red-700 dark:border-red-800 dark:text-red-400">
+                    LIMITE 24h BAIXO
+                  </span>
                 )}
               </div>
-              {(lowMoney || (w && w.balanceUsd <= 0)) && (
-                <div className="mt-1 inline-flex items-center rounded-md border border-red-300 bg-red-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-red-700 dark:border-red-800 dark:text-red-400">
-                  RECARREGAR — {w!.balanceUsd <= 0 ? 'saldo esgotado' : 'menos de 2 dias de saldo'}
+
+              {/* financeiro */}
+              {w ? (
+                <div>
+                  <div className="flex items-baseline justify-between">
+                    <span
+                      className={cn(
+                        'text-2xl font-bold tabular-nums tracking-tight',
+                        lowMoney && 'text-red-700 dark:text-red-400',
+                      )}
+                    >
+                      {fmtUsd(w.balanceUsd)}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {w.daysLeft !== null
+                        ? `~${w.daysLeft.toLocaleString('pt-BR')} dias · ${fmtUsd(w.avgDailyCostUsd)}/dia`
+                        : 'sem consumo nos últimos 7 dias'}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Meter
+                      pct={moneyPct}
+                      tone={lowMoney ? 'danger' : moneyPct < 35 ? 'warn' : 'brand'}
+                      title={`${fmtUsd(w.balanceUsd)} de ${fmtUsd(w.totalLoadedUsd)} carregados`}
+                    />
+                    <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
+                      de {fmtUsd(w.totalLoadedUsd)}
+                    </span>
+                  </div>
                 </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">saldo financeiro não registrado</div>
               )}
+
+              {/* limite 24h */}
               {b && (
-                <div className="mt-1.5 flex items-center gap-2">
-                  <Progress
-                    value={usedPct}
-                    className={cn('h-2 flex-1', lowCap && '[&>div]:bg-red-500')}
+                <div>
+                  <div className="flex items-baseline justify-between text-[11px]">
+                    <span className="uppercase tracking-wide text-muted-foreground">Limite 24h</span>
+                    <span
+                      className={cn(
+                        'tabular-nums',
+                        lowCap ? 'font-semibold text-red-700 dark:text-red-400' : 'text-muted-foreground',
+                      )}
+                    >
+                      {fmtInt(b.balance)} livres de {fmtInt(b.cap)} · {fmtInt(b.sentLast24h)} usados
+                      {lowCap && ' — BAIXO'}
+                    </span>
+                  </div>
+                  <Meter
+                    pct={freePct}
+                    tone={lowCap ? 'danger' : freePct < 35 ? 'warn' : 'brand'}
+                    className="mt-1"
+                    title={`${fmtInt(b.balance)} disparos livres nas próximas 24h`}
                   />
-                  <span
-                    className={cn(
-                      'whitespace-nowrap text-[11px] tabular-nums',
-                      lowCap ? 'font-semibold text-red-700 dark:text-red-400' : 'text-muted-foreground',
-                    )}
-                  >
-                    {b.balance.toLocaleString('pt-BR')}/{b.cap.toLocaleString('pt-BR')} disparos livres (24h)
-                    {lowCap && ' — BAIXO'}
-                  </span>
                 </div>
               )}
-              <div className="mt-1">
+
+              <div>
                 {openForm === inst.id ? (
                   <TopUpForm instanceId={inst.id!} onDone={() => setOpenForm(null)} />
                 ) : (
@@ -154,8 +193,8 @@ export function BalanceCard({ items }: { items: InstanceStat[] }) {
         })}
       </div>
       <p className="mt-3 text-[10.5px] leading-relaxed text-muted-foreground">
-        O saldo financeiro é um ledger: registre o valor carregado no BSP e o dashboard desconta o custo
-        estimado de cada envio (tabela Meta BR). O limite 24h é a capacidade de disparo do número.
+        Ledger: registre o valor carregado no BSP e o dashboard desconta o custo estimado de cada envio
+        (tabela Meta BR). Barras mostram o que SOBRA.
       </p>
     </div>
   );

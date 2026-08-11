@@ -1,5 +1,5 @@
 'use client';
-import { Progress } from '@/components/ui/progress';
+import { Meter } from './meter';
 import { cn } from '@/lib/utils';
 
 export interface GroupSegmentStat {
@@ -63,9 +63,10 @@ export function GroupsCard({ items, minFuture }: { items: GroupSegmentStat[]; mi
               <div className="mt-1.5 flex items-center gap-2">
                 {fillPct !== null ? (
                   <>
-                    <Progress
-                      value={fillPct}
-                      className={cn('h-2 flex-1', fillPct >= 80 && '[&>div]:bg-red-500')}
+                    <Meter
+                      pct={fillPct}
+                      tone={fillPct >= 80 ? 'danger' : fillPct >= 60 ? 'warn' : 'brand'}
+                      title={`${fmtInt(participants!)} de ${fmtInt(s.hardCap)} membros`}
                     />
                     <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
                       {fmtInt(participants!)}/{fmtInt(s.hardCap)}
