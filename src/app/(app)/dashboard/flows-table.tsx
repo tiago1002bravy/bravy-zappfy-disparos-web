@@ -32,7 +32,25 @@ const fmtInt = (v: number) => v.toLocaleString('pt-BR');
 const fmtUsd = (v: number) =>
   `US$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function FlowsTable({ items, totalCostUsd }: { items: FlowStat[]; totalCostUsd: number }) {
+export type FlowRangeId = 'today' | 'yesterday' | '7d' | 'custom';
+
+export const FLOW_RANGES: Array<{ id: FlowRangeId; label: string }> = [
+  { id: 'today', label: 'Hoje' },
+  { id: 'yesterday', label: 'Ontem' },
+  { id: '7d', label: '7 dias' },
+  { id: 'custom', label: 'Personalizado' },
+];
+
+interface FlowsTableProps {
+  items: FlowStat[];
+  totalCostUsd: number;
+  rangeId: FlowRangeId;
+  onRangeChange: (id: FlowRangeId) => void;
+  custom: { from: string; to: string };
+  onCustomChange: (v: { from: string; to: string }) => void;
+}
+
+export function FlowsTable({ items, totalCostUsd, rangeId, onRangeChange, custom, onCustomChange }: FlowsTableProps) {
   const totals = items.reduce(
     (acc, i) => ({
       attempts: acc.attempts + i.attempts,
@@ -44,11 +62,49 @@ export function FlowsTable({ items, totalCostUsd }: { items: FlowStat[]; totalCo
 
   return (
     <div className="rounded-lg border bg-card">
-      <div className="flex items-baseline justify-between px-4 pt-4">
-        <h3 className="text-sm font-medium">API oficial — por fluxo</h3>
-        <span className="text-[11px] text-muted-foreground">
-          custo estimado: tabela Meta BR por mensagem enviada
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+        <div>
+          <h3 className="text-sm font-medium">API oficial — por fluxo</h3>
+          <span className="text-[11px] text-muted-foreground">
+            custo estimado: tabela Meta BR por mensagem enviada
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center overflow-hidden rounded-md border">
+            {FLOW_RANGES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => onRangeChange(r.id)}
+                className={cn(
+                  'px-3 py-1 text-xs transition-colors',
+                  rangeId === r.id ? 'bg-brand text-brand-foreground' : 'hover:bg-muted',
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          {rangeId === 'custom' && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={custom.from}
+                max={custom.to}
+                onChange={(e) => onCustomChange({ ...custom, from: e.target.value })}
+                className="rounded-md border bg-background px-2 py-1 text-xs"
+              />
+              <span className="text-xs text-muted-foreground">a</span>
+              <input
+                type="date"
+                value={custom.to}
+                min={custom.from}
+                onChange={(e) => onCustomChange({ ...custom, to: e.target.value })}
+                className="rounded-md border bg-background px-2 py-1 text-xs"
+              />
+            </div>
+          )}
+        </div>
       </div>
       <div className="mt-2 overflow-x-auto">
         <Table>

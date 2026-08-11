@@ -7,6 +7,11 @@ export interface InstanceStat {
   displayPhoneNumber: string | null;
   dailyCap: number | null;
   active: boolean;
+  budget?: {
+    cap: number;
+    sentLast24h: number;
+    balance: number;
+  };
   counts: {
     sent: number;
     delivered: number | null;
@@ -49,8 +54,21 @@ export function InstanceBarList({ items }: { items: InstanceStat[] }) {
                   {inst.counts.sent.toLocaleString('pt-BR')}
                 </span>
               </div>
-              {(inst.counts.failed > 0 || inst.counts.delivered !== null) && (
-                <div className="mt-0.5 flex gap-3 pl-[11.5rem] text-[10px] text-muted-foreground">
+              {(inst.counts.failed > 0 || inst.counts.delivered !== null || inst.budget) && (
+                <div className="mt-0.5 flex flex-wrap items-center gap-3 pl-[11.5rem] text-[10px] text-muted-foreground">
+                  {inst.budget && (
+                    <span
+                      className={
+                        inst.budget.balance / inst.budget.cap < 0.2
+                          ? 'font-medium text-red-700 dark:text-red-400'
+                          : undefined
+                      }
+                    >
+                      saldo 24h: {inst.budget.balance.toLocaleString('pt-BR')}/
+                      {inst.budget.cap.toLocaleString('pt-BR')}
+                      {inst.budget.balance / inst.budget.cap < 0.2 && ' — BAIXO'}
+                    </span>
+                  )}
                   {inst.counts.delivered !== null && <span>entregues {inst.counts.delivered.toLocaleString('pt-BR')}</span>}
                   {inst.counts.read !== null && <span>lidos {inst.counts.read.toLocaleString('pt-BR')}</span>}
                   {inst.counts.failed > 0 && (

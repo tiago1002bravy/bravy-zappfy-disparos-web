@@ -10,7 +10,8 @@ import { DailyBars, type DailyPoint } from './daily-bars';
 import { DeliveryFunnel, type FunnelData } from './delivery-funnel';
 import { InstanceBarList, type InstanceStat } from './instance-bar-list';
 import { CampaignsTable, type CampaignStat } from './campaigns-table';
-import { FlowsTable, type FlowStat } from './flows-table';
+import { FlowsTable, type FlowStat, type FlowRangeId } from './flows-table';
+import { GroupsCard, type GroupSegmentStat } from './groups-card';
 
 const RANGES = [
   { id: '7d', label: '7 dias', days: 7 },
@@ -74,11 +75,31 @@ export default function DashboardPage() {
     staleTime: 10_000,
   });
 
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const [flowRangeId, setFlowRangeId] = useState<FlowRangeId>('today');
+  const [flowCustom, setFlowCustom] = useState({ from: today, to: today });
+  const flowParams = (() => {
+    if (flowRangeId === 'today') return { from: today, to: today };
+    if (flowRangeId === 'yesterday') {
+      const y = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+      return { from: y, to: y };
+    }
+    if (flowRangeId === '7d') return { from: format(subDays(new Date(), 6), 'yyyy-MM-dd'), to: today };
+    return flowCustom;
+  })();
+
   const { data: flowStats, isLoading: loadingFlows } = useQuery<{ items: FlowStat[]; totalCostUsd: number }>({
-    queryKey: ['stats-flows', from, to],
-    queryFn: async () => (await api.get('/stats/flows', { params: { from, to } })).data,
+    queryKey: ['stats-flows', flowParams.from, flowParams.to],
+    queryFn: async () => (await api.get('/stats/flows', { params: flowParams })).data,
     refetchInterval: 15_000,
     staleTime: 10_000,
+  });
+
+  const { data: groupStats, isLoading: loadingGroups } = useQuery<{ items: GroupSegmentStat[] }>({
+    queryKey: ['stats-groups'],
+    queryFn: async () => (await api.get('/stats/groups')).data,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const kpis = overview?.kpis;
@@ -179,8 +200,17 @@ export default function DashboardPage() {
       {loadingFlows || !flowStats ? (
         <Skeleton className="h-56" />
       ) : (
-        <FlowsTable items={flowStats.items} totalCostUsd={flowStats.totalCostUsd} />
+        <FlowsTable
+          items={flowStats.items}
+          totalCostUsd={flowStats.totalCostUsd}
+          rangeId={flowRangeId}
+          onRangeChange={setFlowRangeId}
+          custom={flowCustom}
+          onCustomChange={setFlowCustom}
+        />
       )}
+
+      {loadingGroups || !groupStats ? <Skeleton className="h-48" /> : <GroupsCard items={groupStats.items} />}
 
       {loadingInstances ? <Skeleton className="h-40" /> : <InstanceBarList items={instances} />}
 
