@@ -1,12 +1,4 @@
 'use client';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
@@ -18,122 +10,94 @@ export interface GroupSegmentStat {
   fullGroups: number;
   current: { name: string; remoteId: string; participants: number | null } | null;
   futureReady: number;
+  futureMissing: number;
   futureNames: string[];
+  health: 'ok' | 'warn' | 'critical';
 }
 
 const fmtInt = (v: number) => v.toLocaleString('pt-BR');
 
-function situacao(s: GroupSegmentStat): { label: string; className: string } {
-  const fillPct =
-    s.current?.participants != null && s.hardCap > 0 ? s.current.participants / s.hardCap : 0;
-  if (!s.current)
-    return {
-      label: 'sem grupo ativo',
-      className: 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-400',
-    };
-  if (s.futureReady === 0 && fillPct >= 0.8)
-    return {
-      label: 'criar próximo grupo',
-      className: 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-400',
-    };
-  if (s.futureReady === 0)
-    return {
-      label: 'sem grupo futuro',
-      className: 'border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400',
-    };
-  return { label: 'ok', className: 'border-brand/40 text-brand' };
+const HEALTH_META: Record<GroupSegmentStat['health'], { className: string }> = {
+  ok: { className: 'border-brand/40 text-brand' },
+  warn: { className: 'border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400' },
+  critical: { className: 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-400' },
+};
+
+function healthLabel(s: GroupSegmentStat): string {
+  if (!s.current) return 'sem grupo ativo';
+  if (s.health === 'critical') return 'criar próximo grupo JÁ';
+  if (s.health === 'warn') return `faltam ${s.futureMissing} futuros`;
+  return 'ok';
 }
 
-export function GroupsCard({ items }: { items: GroupSegmentStat[] }) {
+export function GroupsCard({ items, minFuture }: { items: GroupSegmentStat[]; minFuture: number }) {
   return (
-    <div className="rounded-lg border bg-card">
-      <div className="flex items-baseline justify-between px-4 pt-4">
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex items-baseline justify-between">
         <h3 className="text-sm font-medium">Grupos por segmento</h3>
-        <span className="text-[11px] text-muted-foreground">rotação via shortlink</span>
+        <span className="text-[11px] text-muted-foreground">mínimo {minFuture} grupos futuros</span>
       </div>
-      <div className="mt-2 overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead>Segmento</TableHead>
-              <TableHead>Grupo atual</TableHead>
-              <TableHead className="min-w-44">Lotação</TableHead>
-              <TableHead className="text-center">Futuros prontos</TableHead>
-              <TableHead className="text-center">Lotados</TableHead>
-              <TableHead>Situação</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                  Nenhum shortlink ativo.
-                </TableCell>
-              </TableRow>
-            )}
-            {items.map((s) => {
-              const st = situacao(s);
-              const participants = s.current?.participants ?? null;
-              const fillPct =
-                participants != null && s.hardCap > 0
-                  ? Math.min((participants / s.hardCap) * 100, 100)
-                  : null;
-              return (
-                <TableRow key={s.slug}>
-                  <TableCell className="font-medium">{s.slug}</TableCell>
-                  <TableCell className="max-w-64 truncate text-sm" title={s.current?.name}>
-                    {s.current?.name ?? '—'}
-                  </TableCell>
-                  <TableCell>
-                    {fillPct !== null ? (
-                      <div className="flex items-center gap-2">
-                        <Progress
-                          value={fillPct}
-                          className={cn('w-24', fillPct >= 80 && '[&>div]:bg-red-500')}
-                        />
-                        <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
-                          {fmtInt(participants!)}/{fmtInt(s.hardCap)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        sem contagem{s.current ? ` (cap ${fmtInt(s.hardCap)})` : ''}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span
-                      className={cn(
-                        'text-sm tabular-nums',
-                        s.futureReady === 0 ? 'font-medium text-red-700 dark:text-red-400' : undefined,
-                      )}
-                      title={s.futureNames.join(', ')}
-                    >
-                      {s.futureReady}
+      <div className="mt-3 space-y-4">
+        {items.map((s) => {
+          const participants = s.current?.participants ?? null;
+          const fillPct =
+            participants != null && s.hardCap > 0 ? Math.min((participants / s.hardCap) * 100, 100) : null;
+          const meta = HEALTH_META[s.health];
+          return (
+            <div key={s.slug}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-sm font-medium">{s.slug}</span>
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
+                    meta.className,
+                  )}
+                >
+                  {healthLabel(s)}
+                </span>
+              </div>
+              <div className="mt-1 truncate text-xs text-muted-foreground" title={s.current?.name}>
+                {s.current ? s.current.name : 'nenhum grupo ativo'}
+                {s.autoCreate && <span className="ml-1.5 text-[10px]">· auto-cria</span>}
+              </div>
+              <div className="mt-1.5 flex items-center gap-2">
+                {fillPct !== null ? (
+                  <>
+                    <Progress
+                      value={fillPct}
+                      className={cn('h-2 flex-1', fillPct >= 80 && '[&>div]:bg-red-500')}
+                    />
+                    <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
+                      {fmtInt(participants!)}/{fmtInt(s.hardCap)}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-center text-sm tabular-nums text-muted-foreground">
-                    {s.fullGroups}/{s.totalGroups}
-                  </TableCell>
-                  <TableCell>
+                  </>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">
+                    sem contagem de membros (cap {fmtInt(s.hardCap)})
+                  </span>
+                )}
+                <span className="flex items-center gap-1" title={s.futureNames.join(', ')}>
+                  {Array.from({ length: minFuture }).map((_, i) => (
                     <span
+                      key={i}
                       className={cn(
-                        'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
-                        st.className,
+                        'inline-block size-2.5 rounded-full',
+                        i < s.futureReady ? 'bg-brand' : 'border-[1.5px] border-muted-foreground/50',
                       )}
-                    >
-                      {st.label}
-                    </span>
-                    {s.autoCreate && (
-                      <span className="ml-1.5 text-[10px] text-muted-foreground">auto-cria</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    />
+                  ))}
+                  {s.futureReady > minFuture && (
+                    <span className="text-[10px] text-muted-foreground">+{s.futureReady - minFuture}</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
+      <p className="mt-3 text-[10.5px] text-muted-foreground">
+        ● grupos futuros prontos · lotados: {items.map((s) => `${s.slug} ${s.fullGroups}/${s.totalGroups}`).join(' · ')}
+      </p>
     </div>
   );
 }
