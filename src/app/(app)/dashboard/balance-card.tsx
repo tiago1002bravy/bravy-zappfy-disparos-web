@@ -95,10 +95,13 @@ export function BalanceCard({ items }: { items: InstanceStat[] }) {
         {items.map((inst) => {
           const b = inst.budget;
           const w = inst.wallet;
-          const freePct = b ? (b.balance / b.cap) * 100 : 0;
-          const lowCap = b ? freePct < 20 : false;
+          const usedPct = b ? ((b.cap - b.balance) / b.cap) * 100 : 0;
+          const lowCap = b ? b.balance / b.cap < 0.2 : false;
           const lowMoney = w != null && (w.balanceUsd <= 0 || (w.daysLeft !== null && w.daysLeft < 2));
-          const moneyPct = w && w.totalLoadedUsd > 0 ? (Math.max(w.balanceUsd, 0) / w.totalLoadedUsd) * 100 : 0;
+          const spentPct =
+            w && w.totalLoadedUsd > 0
+              ? Math.min(((w.totalLoadedUsd - Math.max(w.balanceUsd, 0)) / w.totalLoadedUsd) * 100, 100)
+              : 0;
           return (
             <div key={inst.id} className="space-y-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -138,12 +141,12 @@ export function BalanceCard({ items }: { items: InstanceStat[] }) {
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <Meter
-                      pct={moneyPct}
-                      tone={lowMoney ? 'danger' : moneyPct < 35 ? 'warn' : 'brand'}
-                      title={`${fmtUsd(w.balanceUsd)} de ${fmtUsd(w.totalLoadedUsd)} carregados`}
+                      pct={spentPct}
+                      tone={lowMoney ? 'danger' : spentPct >= 65 ? 'warn' : 'brand'}
+                      title={`gasto ${fmtUsd(Math.max(w.totalLoadedUsd - w.balanceUsd, 0))} de ${fmtUsd(w.totalLoadedUsd)} carregados`}
                     />
                     <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
-                      de {fmtUsd(w.totalLoadedUsd)}
+                      gasto de {fmtUsd(w.totalLoadedUsd)}
                     </span>
                   </div>
                 </div>
@@ -162,15 +165,15 @@ export function BalanceCard({ items }: { items: InstanceStat[] }) {
                         lowCap ? 'font-semibold text-red-700 dark:text-red-400' : 'text-muted-foreground',
                       )}
                     >
-                      {fmtInt(b.balance)} livres de {fmtInt(b.cap)} · {fmtInt(b.sentLast24h)} usados
-                      {lowCap && ' — BAIXO'}
+                      {fmtInt(b.cap - b.balance)} usados de {fmtInt(b.cap)} · {fmtInt(b.balance)} livres
+                      {lowCap && ' — QUASE NO LIMITE'}
                     </span>
                   </div>
                   <Meter
-                    pct={freePct}
-                    tone={lowCap ? 'danger' : freePct < 35 ? 'warn' : 'brand'}
+                    pct={usedPct}
+                    tone={usedPct >= 80 ? 'danger' : usedPct >= 65 ? 'warn' : 'brand'}
                     className="mt-1"
-                    title={`${fmtInt(b.balance)} disparos livres nas próximas 24h`}
+                    title={`${fmtInt(b.cap - b.balance)} de ${fmtInt(b.cap)} usados nas últimas 24h`}
                   />
                 </div>
               )}
@@ -194,7 +197,7 @@ export function BalanceCard({ items }: { items: InstanceStat[] }) {
       </div>
       <p className="mt-3 text-[10.5px] leading-relaxed text-muted-foreground">
         Ledger: registre o valor carregado no BSP e o dashboard desconta o custo estimado de cada envio
-        (tabela Meta BR). Barras mostram o que SOBRA.
+        (tabela Meta BR). Barras mostram o USO — verde tranquilo, âmbar ≥65%, vermelho ≥80%.
       </p>
     </div>
   );
