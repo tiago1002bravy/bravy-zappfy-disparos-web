@@ -10,6 +10,7 @@ import { DailyBars, type DailyPoint } from './daily-bars';
 import { DeliveryFunnel, type FunnelData } from './delivery-funnel';
 import { InstanceBarList, type InstanceStat } from './instance-bar-list';
 import { CampaignsTable, type CampaignStat } from './campaigns-table';
+import { FlowsTable, type FlowStat } from './flows-table';
 
 const RANGES = [
   { id: '7d', label: '7 dias', days: 7 },
@@ -69,6 +70,13 @@ export default function DashboardPage() {
   const { data: campaigns, isLoading: loadingCampaigns } = useQuery<{ items: CampaignStat[] }>({
     queryKey: ['stats-campaigns', from, to],
     queryFn: async () => (await api.get('/stats/campaigns', { params: { from, to } })).data,
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+  });
+
+  const { data: flowStats, isLoading: loadingFlows } = useQuery<{ items: FlowStat[]; totalCostUsd: number }>({
+    queryKey: ['stats-flows', from, to],
+    queryFn: async () => (await api.get('/stats/flows', { params: { from, to } })).data,
     refetchInterval: 15_000,
     staleTime: 10_000,
   });
@@ -167,6 +175,12 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {loadingFlows || !flowStats ? (
+        <Skeleton className="h-56" />
+      ) : (
+        <FlowsTable items={flowStats.items} totalCostUsd={flowStats.totalCostUsd} />
+      )}
 
       {loadingInstances ? <Skeleton className="h-40" /> : <InstanceBarList items={instances} />}
 
